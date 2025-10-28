@@ -27,6 +27,9 @@ RewriteRule ^api/products/?$ api/products/index.php [L,QSA]
 # Categories routes
 RewriteRule ^api/categories$ api/categories/index.php [L]
 
+# Geocoding routes
+RewriteRule ^api/geocoding/coordinates/?$ api/geocoding/coordinates.php [L,QSA]
+
 # Orders routes
 RewriteRule ^api/orders$ api/orders/index.php [L]
 RewriteRule ^api/orders/create$ api/orders/create.php [L]
@@ -41,6 +44,7 @@ RewriteRule ^api/sellers/?$ api/sellers/index.php [L,QSA]
 # Users routes (Admin)
 RewriteRule ^api/users/approve/?$ api/users/approve.php [L,QSA]
 RewriteRule ^api/users/reject/?$ api/users/reject.php [L,QSA]
+RewriteRule ^api/users/([0-9]+)/addresses/?$ api/users/addresses.php [L,QSA]
 RewriteRule ^api/users/?$ api/users/index.php [L,QSA]
 
 # Seller routes
