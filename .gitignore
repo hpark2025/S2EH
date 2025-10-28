@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Vite cache
+.vite/
+
+# Frontend specific
+s2e-frontend/frontend/node_modules/
+s2e-frontend/frontend/dist/
+s2e-frontend/frontend/.vite/
+
+# Backend specific
+s2e-backend/vendor/
+
