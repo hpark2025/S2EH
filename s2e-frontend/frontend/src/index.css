@@ -1,0 +1,228 @@
+/* Reset to neutral; Bootstrap and admin styles will define UI */
+html, body, #root { 
+  height: 100%; 
+  margin: 0;
+  padding: 0;
+}
+
+body { 
+  margin: 0;
+  padding: 0; 
+}
+
+/* Fix auth page whitespace */
+.auth-page {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.shopee-navbar {
+  margin-top: 0 !important;
+  padding-top: 8px;
+}
+
+/* Product card hover effects */
+.product-card:hover .product-overlay {
+  opacity: 1 !important;
+}
+
+.product-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.product-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.category-header {
+  background: linear-gradient(135deg, #198754 0%, #20c997 100%);
+}
+
+/* Enhanced Modal System - Wider, Better Positioned */
+.modal-backdrop {
+  background-color: rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Custom Modal Sizes - Optimized for Standard Screens */
+.modal-sm {
+  max-width: 400px !important;
+}
+
+.modal-dialog {
+  max-width: 600px !important; /* Reasonable default size */
+  margin: 1.75rem auto !important;
+}
+
+.modal-lg {
+  max-width: 800px !important; /* Good for most forms */
+}
+
+.modal-xl {
+  max-width: 1000px !important; /* Fits well on 1366px+ screens */
+}
+
+.modal-xxl {
+  max-width: 1200px !important; /* Maximum for complex content */
+}
+
+/* Enhanced Modal Content Styling */
+.modal-content {
+  border: none !important;
+  border-radius: 12px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2) !important;
+  overflow: hidden !important;
+}
+
+/* Better Spacing and Typography */
+.modal-header {
+  padding: 1.5rem 2.5rem !important;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+  border-bottom: 1px solid #dee2e6 !important;
+}
+
+.modal-header .modal-title {
+  font-weight: 600 !important;
+  font-size: 1.25rem !important;
+  color: #212529 !important;
+}
+
+.modal-body {
+  padding: 2rem 2.5rem !important;
+  max-height: 70vh !important;
+  overflow-y: auto !important;
+}
+
+.modal-footer {
+  padding: 1.25rem 2.5rem !important;
+  background: #f8f9fa !important;
+  border-top: 1px solid #dee2e6 !important;
+}
+
+/* Perfect Centering */
+.modal-dialog-centered {
+  display: flex !important;
+  align-items: center !important;
+  min-height: calc(100% - 3.5rem) !important;
+}
+
+/* Scrollable Content */
+.modal-dialog-scrollable {
+  height: calc(100% - 3.5rem) !important;
+}
+
+.modal-dialog-scrollable .modal-content {
+  max-height: 100% !important;
+  overflow: hidden !important;
+}
+
+.modal-dialog-scrollable .modal-body {
+  overflow-y: auto !important;
+}
+
+/* Enhanced Button Styling in Modals */
+.modal-footer .btn {
+  padding: 0.75rem 1.5rem !important;
+  font-weight: 500 !important;
+  border-radius: 8px !important;
+  transition: all 0.3s ease !important;
+}
+
+.modal-footer .btn:not(:last-child) {
+  margin-right: 0.75rem !important;
+}
+
+/* Close Button Enhancement */
+.modal-header .btn-close {
+  padding: 0.75rem !important;
+  margin: -0.75rem -0.75rem -0.75rem auto !important;
+  background-size: 1.25rem !important;
+  opacity: 0.6 !important;
+}
+
+.modal-header .btn-close:hover {
+  opacity: 1 !important;
+}
+
+/* Responsive Design - Better Screen Compatibility */
+@media (max-width: 1366px) {
+  .modal-xxl {
+    max-width: 90% !important;
+  }
+  
+  .modal-xl {
+    max-width: 85% !important;
+  }
+}
+
+@media (max-width: 1200px) {
+  .modal-xxl {
+    max-width: 90% !important;
+  }
+  
+  .modal-xl {
+    max-width: 85% !important;
+  }
+  
+  .modal-lg {
+    max-width: 80% !important;
+  }
+}
+
+@media (max-width: 992px) {
+  .modal-dialog {
+    max-width: 75% !important;
+  }
+  
+  .modal-lg {
+    max-width: 80% !important;
+  }
+  
+  .modal-xl,
+  .modal-xxl {
+    max-width: 85% !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .modal-dialog,
+  .modal-lg,
+  .modal-xl,
+  .modal-xxl {
+    max-width: 95% !important;
+    margin: 1rem auto !important;
+  }
+  
+  .modal-header {
+    padding: 1.25rem 1.5rem !important;
+  }
+  
+  .modal-body {
+    padding: 1.5rem !important;
+  }
+  
+  .modal-footer {
+    padding: 1rem 1.5rem !important;
+  }
+  
+  .modal-dialog-centered {
+    min-height: calc(100% - 2rem) !important;
+  }
+}
+
+@media (max-width: 576px) {
+  .modal-dialog,
+  .modal-lg,
+  .modal-xl,
+  .modal-xxl {
+    max-width: 98% !important;
+    margin: 0.5rem auto !important;
+  }
+  
+  .modal-header,
+  .modal-body,
+  .modal-footer {
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
+  }
+}

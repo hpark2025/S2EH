@@ -1,0 +1,204 @@
+.role-selection-page {
+  min-height: 100vh;
+  background: #f8f9fa;
+  display: flex;
+  align-items: center;
+  padding: 2rem 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.role-selection-card {
+  background: white;
+  border-radius: 20px;
+  padding: 3rem;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+  border: 1px solid #e9ecef;
+}
+
+.logo {
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+}
+
+.role-buttons-container {
+  margin: 2rem 0;
+}
+
+.role-button {
+  width: 100%;
+  background: white;
+  border: 2px solid #e9ecef;
+  border-radius: 15px;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  text-align: left;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.role-button:hover {
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+  border-color: #007bff;
+}
+
+.customer-btn:hover {
+  background: #28a745;
+  color: white;
+  border-color: #28a745;
+}
+
+.seller-btn:hover {
+  background: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.admin-btn:hover {
+  background: #dc3545;
+  color: white;
+  border-color: #dc3545;
+}
+
+.role-icon {
+  flex-shrink: 0;
+  margin-right: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  background: #f8f9fa;
+}
+
+.role-icon i {
+  font-size: 2rem;
+  color: #6c757d;
+}
+
+.customer-btn:hover .role-icon {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.customer-btn:hover .role-icon i {
+  color: white;
+}
+
+.seller-btn:hover .role-icon {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.seller-btn:hover .role-icon i {
+  color: white;
+}
+
+.admin-btn:hover .role-icon {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.admin-btn:hover .role-icon i {
+  color: white;
+}
+
+.role-content {
+  flex-grow: 1;
+}
+
+.role-title {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #212529;
+}
+
+.role-description {
+  margin: 0;
+  color: #6c757d;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.role-button:hover .role-title,
+.role-button:hover .role-description {
+  color: white;
+}
+
+.role-arrow {
+  flex-shrink: 0;
+  margin-left: 1rem;
+}
+
+.role-arrow i {
+  font-size: 1.5rem;
+  color: #6c757d;
+}
+
+.role-button:hover .role-arrow i {
+  color: white;
+}
+
+.text-primary {
+  color: #007bff !important;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .role-selection-page {
+    padding: 1rem;
+  }
+  
+  .role-selection-card {
+    padding: 2rem 1.5rem;
+    margin: 1rem;
+  }
+  
+  .role-button {
+    padding: 1.25rem;
+  }
+  
+  .role-icon {
+    width: 50px;
+    height: 50px;
+    margin-right: 1rem;
+  }
+  
+  .role-icon i {
+    font-size: 1.5rem;
+  }
+  
+  .role-title {
+    font-size: 1.2rem;
+  }
+  
+  .role-description {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .role-selection-card {
+    padding: 1.5rem 1rem;
+  }
+  
+  .role-button {
+    flex-direction: column;
+    text-align: center;
+    padding: 1.5rem 1rem;
+  }
+  
+  .role-icon {
+    margin-right: 0;
+    margin-bottom: 1rem;
+  }
+  
+  .role-arrow {
+    margin-left: 0;
+    margin-top: 1rem;
+  }
+  
+  .role-arrow i {
+    transform: rotate(90deg);
+  }
+}

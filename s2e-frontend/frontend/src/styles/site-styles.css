@@ -1,0 +1,49 @@
+/* Import legacy site styles from public */
+@import url('/css/styles.css');
+@import url('/seller/assets/css/seller-styles.css');
+
+/* Fix auth page whitespace issues for React */
+html, body {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.auth-page {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.shopee-navbar {
+  margin-top: 0 !important;
+  padding-top: 8px !important;
+}
+
+/* Address dropdown styles */
+.form-select:disabled {
+  background-color: #f8f9fa;
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.form-select option:disabled {
+  color: #6c757d;
+  font-style: italic;
+}
+
+/* Loading state for dropdowns */
+.form-select[disabled] {
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3E%3C/svg%3E");
+}
+
+/* Custom button for product card */
+.btn-outline-custom {
+  color: #e44c31;
+  border: 1px solid #e44c31;
+  background-color: transparent;
+  transition: all 0.3s ease;
+}
+
+.btn-outline-custom:hover {
+  background-color: #e44c31;
+  color: #fff;
+}

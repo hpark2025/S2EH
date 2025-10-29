@@ -1,0 +1,786 @@
+/* Enhanced Seller UI Styles */
+
+/* Modern Green Minimalist Layout */
+.seller-layout {
+  display: flex;
+  min-height: 100vh;
+  background: #fafafa;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.seller-main-wrapper {
+  flex: 1;
+  margin-left: 280px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+}
+
+.seller-main-wrapper.expanded {
+  margin-left: 70px;
+}
+
+/* Modern Green Minimalist Sidebar */
+.seller-sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 280px;
+  height: 100vh;
+  background: #ffffff;
+  border-right: 1px solid #e0e0e0;
+  color: #1b5e20;
+  z-index: 1000;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+}
+
+.seller-sidebar.collapsed {
+  width: 70px;
+}
+
+.seller-sidebar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.seller-sidebar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.seller-sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+}
+
+.seller-sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Modern Green Minimalist Header */
+.sidebar-header {
+  padding: 24px 20px;
+  border-bottom: 1px solid #1b5e20;
+  text-align: center;
+  background: linear-gradient(180deg, #2e7d32 0%, #388e3c 100%);
+  color: white;
+}
+
+.sidebar-logo {
+  font-size: 22px;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 4px;
+  letter-spacing: -0.5px;
+}
+
+.sidebar-title {
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.seller-sidebar.collapsed .sidebar-title {
+  display: none;
+}
+
+/* Modern Green Minimalist Navigation */
+.sidebar-nav {
+  padding: 20px 0;
+}
+
+.nav-item {
+  margin-bottom: 4px;
+  padding: 0 20px;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  padding: 14px 16px;
+  color: #424242;
+  text-decoration: none;
+  border-radius: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  font-weight: 500;
+  font-size: 14px;
+  margin: 0 4px;
+}
+
+.nav-link:hover {
+  background: #f3f8f3;
+  color: #1b5e20;
+  transform: translateX(4px);
+}
+
+.nav-link.active {
+  background: #e8f5e8;
+  color: #1b5e20;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(27, 94, 32, 0.1);
+}
+
+.nav-link.active::before {
+  content: '';
+  position: absolute;
+  left: -20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 24px;
+  background: #4caf50;
+  border-radius: 0 2px 2px 0;
+}
+
+.nav-link i {
+  font-size: 18px;
+  margin-right: 12px;
+  width: 20px;
+  text-align: center;
+  transition: transform 0.3s ease;
+}
+
+.nav-link:hover i {
+  transform: scale(1.1);
+}
+
+.seller-sidebar.collapsed .nav-link span {
+  display: none;
+}
+
+.seller-sidebar.collapsed .nav-link {
+  justify-content: center;
+  padding: 12px;
+}
+
+.seller-sidebar.collapsed .nav-link i {
+  margin-right: 0;
+}
+
+/* Modern Green Minimalist Topbar */
+.seller-topbar {
+  background: linear-gradient(180deg, #2e7d32 0%, #388e3c 100%) !important;
+  color: white;
+  padding: 20px 24px;
+  border-bottom: 1px solid #1b5e20;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 72px;
+  box-shadow: 0 2px 12px rgba(46, 125, 50, 0.2);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  transition: all 0.3s ease;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.sidebar-toggle {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 18px;
+  color: white;
+  cursor: pointer;
+  padding: 12px;
+  border-radius: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-toggle:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.page-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: white;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+/* Modern Green Minimalist Profile */
+.seller-profile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.seller-profile:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.seller-profile:hover span,
+.seller-profile:hover i {
+  color: white;
+}
+
+.seller-avatar {
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.seller-profile:hover .seller-avatar {
+  transform: scale(1.05);
+}
+
+.seller-profile span {
+  font-weight: 500;
+  color: white;
+  font-size: 14px;
+  transition: color 0.3s ease;
+}
+
+.seller-profile i {
+  color: white;
+  font-size: 12px;
+  transition: all 0.3s ease;
+}
+
+.seller-profile:hover i {
+  transform: rotate(180deg);
+  color: white;
+}
+
+/* Modern Green Minimalist Dropdown */
+.profile-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  min-width: 200px;
+  z-index: 1000;
+  margin-top: 8px;
+  overflow: hidden;
+  animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  color: #2c3e50;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  position: relative;
+}
+
+.dropdown-item:hover {
+  background: #f3f8f3;
+  color: #1b5e20;
+  transform: translateX(2px);
+}
+
+.dropdown-item i {
+  margin-right: 12px;
+  font-size: 16px;
+  width: 20px;
+  text-align: center;
+}
+
+.dropdown-item.text-danger {
+  color: #e74c3c;
+}
+
+.dropdown-item.text-danger:hover {
+  background: #ffebee;
+  color: #d32f2f;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #e9ecef, transparent);
+  margin: 8px 0;
+}
+
+/* Enhanced Dropdown Header */
+.dropdown-header {
+  padding: 16px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.dropdown-user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dropdown-avatar {
+  width: 40px;
+  height: 40px;
+  background: #4caf50;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.dropdown-user-details {
+  flex: 1;
+}
+
+.dropdown-name {
+  font-weight: 600;
+  color: #1b5e20;
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+
+.dropdown-email {
+  color: #757575;
+  font-size: 12px;
+}
+
+/* Modern Green Minimalist Cards */
+.dashboard-card {
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e0e0e0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Green Search Field Styling */
+.dashboard-card .input-group-text {
+  background: linear-gradient(180deg, #2e7d32 0%, #388e3c 100%) !important;
+  color: white;
+  border: 1px solid #1b5e20;
+  border-right: none;
+}
+
+.dashboard-card .form-control {
+  border: 1px solid #1b5e20;
+  border-left: none;
+  background: #f8f9fa;
+}
+
+.dashboard-card .form-control:focus {
+  border-color: #4caf50;
+  box-shadow: 0 0 0 0.2rem rgba(76, 175, 80, 0.25);
+  background: white;
+}
+
+.dashboard-card .form-select {
+  border: 1px solid #1b5e20;
+  background: #f8f9fa;
+}
+
+.dashboard-card .form-select:focus {
+  border-color: #4caf50;
+  box-shadow: 0 0 0 0.2rem rgba(76, 175, 80, 0.25);
+  background: white;
+}
+
+.dashboard-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #4caf50;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.dashboard-card h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1b5e20;
+  margin-bottom: 8px;
+}
+
+.dashboard-card .value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #4caf50;
+  margin-bottom: 8px;
+}
+
+.dashboard-card .change {
+  font-size: 14px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.change.negative {
+  background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+  color: #721c24;
+}
+
+/* Modern Green Minimalist Buttons */
+.btn-enhanced {
+  background: #4caf50;
+  border: none;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-enhanced::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.btn-enhanced:hover::before {
+  left: 100%;
+}
+
+.btn-enhanced:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+  background: #45a049;
+}
+
+.btn-success-enhanced {
+  background: linear-gradient(135deg, #27ae60, #2ecc71);
+  box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+}
+
+.btn-success-enhanced:hover {
+  box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
+}
+
+.btn-warning-enhanced {
+  background: linear-gradient(135deg, #f39c12, #e67e22);
+  box-shadow: 0 4px 15px rgba(243, 156, 18, 0.3);
+}
+
+.btn-warning-enhanced:hover {
+  box-shadow: 0 6px 20px rgba(243, 156, 18, 0.4);
+}
+
+.btn-danger-enhanced {
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+}
+
+.btn-danger-enhanced:hover {
+  box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
+}
+
+/* Modern Green Minimalist Tables */
+.seller-table {
+  background: #ffffff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e0e0e0;
+}
+
+.seller-table table {
+  margin: 0;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.seller-table thead th {
+  background: #f5f5f5;
+  color: #1b5e20;
+  font-weight: 600;
+  padding: 16px;
+  border: none;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.seller-table tbody tr {
+  transition: all 0.3s ease;
+}
+
+.seller-table tbody tr:hover {
+  background: #f3f8f3;
+  transform: scale(1.005);
+}
+
+.seller-table tbody td {
+  padding: 16px;
+  border: none;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  vertical-align: middle;
+}
+
+/* Modern Green Minimalist Status Badges */
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.pending {
+  background: #fff3e0;
+  color: #f57c00;
+}
+
+.status-badge.processing {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.status-badge.completed {
+  background: #e8f5e8;
+  color: #2e7d32;
+}
+
+.status-badge.cancelled {
+  background: #ffebee;
+  color: #d32f2f;
+}
+
+/* Loading States */
+.loading-skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+  border-radius: 8px;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .seller-sidebar {
+    transform: translateX(-100%);
+  }
+
+  .seller-sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .seller-main-wrapper {
+    margin-left: 0;
+  }
+
+  .seller-topbar {
+    padding: 12px 15px;
+  }
+
+  .page-title {
+    font-size: 20px;
+  }
+
+  .seller-profile span {
+    display: none;
+  }
+
+  .dashboard-card {
+    padding: 16px;
+  }
+
+  .dashboard-card .value {
+    font-size: 24px;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .seller-topbar {
+    background: rgba(44, 62, 80, 0.95);
+    color: white;
+  }
+
+  .page-title {
+    color: white;
+  }
+
+  .dashboard-card {
+    color: white;
+  }
+
+  .dashboard-card h3 {
+    color: white;
+  }
+}
+
+/* Animations */
+.fade-in {
+  animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slide-in-left {
+  animation: slideInLeft 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Hover Effects */
+.hover-lift {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-lift:hover {
+  transform: translateY(-3px);
+}
+
+.hover-glow {
+  transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-glow:hover {
+  box-shadow: 0 8px 25px rgba(52, 152, 219, 0.15);
+}
+/* Customer management styles */
+.customer-avatar .avatar-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.customer-avatar-large .avatar-circle-large {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.card {
+  border: 1px solid rgba(34, 197, 94, 0.1);
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.2);
+}
+
+/* Customer status badges */
+.badge.bg-success {
+  background: linear-gradient(135deg, var(--green-primary) 0%, var(--green-dark) 100%) !important;
+}
+
+.badge.bg-secondary {
+  background: linear-gradient(135deg, #6c757d 0%, #495057 100%) !important;
+}
+
+/* Modal enhancements */
+.modal-content {
+  border: none;
+  border-radius: 1rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+  border-bottom: 1px solid rgba(34, 197, 94, 0.1);
+  background: linear-gradient(135deg, #f8fffe 0%, #f0fdf4 100%);
+  border-radius: 1rem 1rem 0 0;
+}
+
+.modal-footer {
+  border-top: 1px solid rgba(34, 197, 94, 0.1);
+  background: linear-gradient(135deg, #f8fffe 0%, #f0fdf4 100%);
+  border-radius: 0 0 1rem 1rem;
+}

@@ -1,0 +1,7 @@
+export { default as EditProductModal } from './EditProductModal'
+export { default as ApproveProductModal } from './ApproveProductModal'
+export { default as RejectProductModal } from './RejectProductModal'
+export { default as RestockProductModal } from './RestockProductModal'
+export { default as DeleteProductModal } from './DeleteProductModal'
+export { default as ArchiveProductModal } from './ArchiveProductModal'
+export { default as CategorizeProductModal } from './CategorizeProductModal'

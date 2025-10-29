@@ -1,0 +1,84 @@
+import { NavLink, Outlet } from 'react-router-dom'
+import { useAppState } from '../context/AppContext.jsx'
+import { useCustomerAutoLogout } from '../hooks/useAutoLogout.js'
+import { useCart } from '../hooks/useCart.js'
+
+function Header() {
+  const { state } = useAppState()
+  const { isLoggedIn } = state
+  const { cartCount } = useCart()
+  const { logout } = useCustomerAutoLogout(() => {
+    console.log('Customer auto-logout triggered')
+  })
+
+  const handleLogout = () => {
+    // Clear cart on logout
+    localStorage.removeItem('cart')
+    logout()
+  }
+
+  return (
+    <header className="header-wrapper">
+      <div className="header-with-search-wrapper">
+        <div className="logo-wrapper">
+          <NavLink 
+            to={isLoggedIn ? "/auth/home" : "/home"} 
+            aria-label="Home"
+          >
+            <img src="/logos/s2eh.png" alt="Logo" />
+          </NavLink>
+        </div>
+        <div className="search-wrapper">
+          <input type="text" className="search-input" placeholder="Search..." />
+          <button className="search-button">
+            <i className="bi bi-search"></i>
+          </button>
+        </div>
+        <div className="cart-account-wrapper">
+          {isLoggedIn ? (
+            // Show cart and account for logged in users
+            <>
+              <NavLink to="/auth/chat" className="chat-wrapper" aria-label="Chat">
+                <i className="bi bi-chat-dots cart-icon"></i>
+                <span className="badge bg-danger position-absolute top-0 start-100 translate-middle">3</span>
+              </NavLink>
+              <NavLink to="/user/cart" className="basket-wrapper" aria-label="Basket">
+                <i className="bi bi-basket cart-icon"></i>
+                {cartCount > 0 && (
+                  <span className="basket-badge">{cartCount}</span>
+                )}
+              </NavLink>
+              <NavLink to="/auth/account/profile" className="account-wrapper" aria-label="Account">
+                <i className="bi bi-person-fill"></i>
+              </NavLink>
+              <button onClick={handleLogout} className="btn btn-outline-danger btn-sm ms-2">
+                Logout
+              </button>
+            </>
+          ) : (
+            // Show login/signup for non-logged in users
+            <div className="d-flex align-items-center gap-2 auth-buttons">
+              <NavLink to="/login" className="btn btn-outline-primary btn-sm">
+                Login
+              </NavLink>
+              <NavLink to="/register" className="btn btn-sm" style={{ backgroundColor: 'var(--highlight-color)', borderColor: 'var(--highlight-color)', color: 'white' }}>
+                Sign Up
+              </NavLink>
+            </div>
+          )}
+        </div>
+      </div>
+    </header>
+  )
+}
+
+export default function UserLayout() {
+  return (
+    <div className="site-root">
+      <Header />
+      <Outlet />
+    </div>
+  )
+}
+
+
