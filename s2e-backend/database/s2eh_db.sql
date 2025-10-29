@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Oct 28, 2025 at 09:17 PM
+-- Generation Time: Oct 29, 2025 at 01:36 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -58,7 +58,10 @@ CREATE TABLE `addresses` (
 INSERT INTO `addresses` (`id`, `user_id`, `seller_id`, `address_type`, `first_name`, `last_name`, `phone`, `address_line_1`, `address_line_2`, `barangay`, `barangay_code`, `municipality`, `municipality_code`, `city`, `province`, `province_code`, `postal_code`, `country`, `is_default`, `created_at`, `updated_at`) VALUES
 (6, NULL, 6, 'business', 'Harold Plaza', 'Harold Plaza', '+639630213879', 'Business Address', NULL, 'Niño Jesus', NULL, 'City of Iriga', NULL, 'City of Iriga', 'Camarines Sur', NULL, NULL, 'Philippines', 1, '2025-10-28 09:41:16', '2025-10-28 11:13:26'),
 (7, NULL, 10, 'business', NULL, NULL, NULL, '', NULL, 'San Vicente (Pob.)', NULL, 'Lagonoy', NULL, NULL, 'Camarines Sur', NULL, NULL, 'Philippines', 0, '2025-10-28 11:14:38', '2025-10-28 11:14:38'),
-(8, 9, NULL, 'shipping', 'tyt', 'ytyt', '+639095677546', '', NULL, 'Aguinaldo', '160303032', 'Esperanza', '160303000', NULL, 'Agusan Del Sur', '160300000', NULL, 'Philippines', 1, '2025-10-28 16:23:36', '2025-10-28 16:23:36');
+(8, 9, NULL, 'shipping', 'tyt', 'ytyt', '+639095677546', '', NULL, 'Aguinaldo', '160303032', 'Esperanza', '160303000', NULL, 'Agusan Del Sur', '160300000', NULL, 'Philippines', 1, '2025-10-28 16:23:36', '2025-10-28 16:23:36'),
+(9, 10, NULL, 'shipping', 'try', 'dsfsf', '+63954664566745', '', NULL, 'Apo Macote', '101312027', 'City of Malaybalay', '101312000', NULL, 'Bukidnon', '101300000', '8700', 'Philippines', 1, '2025-10-28 21:02:42', '2025-10-28 21:02:42'),
+(10, NULL, 10, 'business', NULL, NULL, NULL, 'dsfsf', NULL, 'San Antonio', NULL, 'Bagac', NULL, NULL, 'Bataan', NULL, '2107', 'Philippines', 0, '2025-10-28 23:45:46', '2025-10-28 23:45:46'),
+(12, NULL, 12, 'business', 'mark Plaza', 'mark Plaza', '+639630213833', 'Business Address', NULL, 'Bgy. 38 - Gogon', NULL, NULL, NULL, 'City of Legazpi', 'Albay', NULL, NULL, 'Philippines', 1, '2025-10-29 00:31:43', '2025-10-29 00:31:43');
 
 -- --------------------------------------------------------
 
@@ -84,7 +87,7 @@ CREATE TABLE `admins` (
 --
 
 INSERT INTO `admins` (`id`, `email`, `password`, `full_name`, `role`, `permissions`, `status`, `created_at`, `updated_at`, `last_login`) VALUES
-(1, 'admin@s2eh.local', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'System Administrator', 'super_admin', NULL, 'active', '2025-10-28 08:38:16', '2025-10-28 20:10:37', '2025-10-28 20:10:37');
+(1, 'admin@s2eh.local', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'System Administrator', 'super_admin', NULL, 'active', '2025-10-28 08:38:16', '2025-10-29 00:32:25', '2025-10-29 00:32:25');
 
 -- --------------------------------------------------------
 
@@ -250,7 +253,8 @@ CREATE TABLE `products` (
 
 INSERT INTO `products` (`id`, `seller_id`, `category_id`, `title`, `slug`, `description`, `price`, `compare_at_price`, `cost_price`, `sku`, `barcode`, `weight`, `unit`, `stock_quantity`, `low_stock_threshold`, `status`, `is_featured`, `thumbnail`, `images`, `tags`, `created_at`, `updated_at`) VALUES
 (2, 10, NULL, 'Tinapay', 'tinapay-6900c04db3d25', 'sdsd', 5.00, NULL, NULL, 'SKU-1761656909662', NULL, NULL, 'kg', 100, 10, 'published', 0, NULL, '[]', '[]', '2025-10-28 13:08:29', '2025-10-28 13:12:06'),
-(3, 10, NULL, 'Milk tea', 'milk-tea-6900cf6e232f7', 'mdsfdsfdsf', 45.00, NULL, NULL, 'SKU-1761660782061', NULL, NULL, 'kg', 50, 10, 'proposed', 0, NULL, '[]', '[]', '2025-10-28 14:13:02', '2025-10-28 14:13:02');
+(3, 10, NULL, 'Milk tea', 'milk-tea-6900cf6e232f7', 'mdsfdsfdsf', 45.00, NULL, NULL, 'SKU-1761660782061', NULL, NULL, 'kg', 50, 10, 'published', 0, NULL, '[]', '[]', '2025-10-28 14:13:02', '2025-10-28 20:48:56'),
+(6, 10, NULL, 'tinapa', 'tinapa-69012afe2ff0d', 'tinapa', 6.00, NULL, NULL, 'SKU-1761684222079', NULL, NULL, 'kg', 100, 10, 'published', 0, '/uploads/products/product_69012afe323a9.jpg', '[]', '[]', '2025-10-28 20:43:42', '2025-10-28 20:48:52');
 
 -- --------------------------------------------------------
 
@@ -283,7 +287,9 @@ CREATE TABLE `sellers` (
 
 INSERT INTO `sellers` (`id`, `email`, `password`, `business_name`, `owner_name`, `phone`, `business_type`, `business_description`, `verification_status`, `status`, `is_lgu_verified`, `tax_id`, `business_permit`, `created_at`, `updated_at`, `last_login`) VALUES
 (6, 'hplaza292@gmail.com', '$2y$10$7Z8JwlqLxlxSj4H6AB20pOywesm3F3ZGO5cwyHUfGTNyF1fRuqxRO', 'Harold Kinalas', 'Harold Plaza', '+639630213879', 'food', 'sadsad', 'pending', 'active', 0, NULL, '3344454', '2025-10-28 09:41:16', '2025-10-28 09:41:16', NULL),
-(10, 'h@gmail.com', '$2y$10$Zk8cSuYt9uHYxvpVha0jp.g4C.Egr.sitCkg51sDtOyNHfa3ajn52', 'random', 'sdasd dsasa sadds', '+639630213864', 'fishery', 'sadsa', 'verified', 'active', 0, NULL, '45354', '2025-10-28 11:14:38', '2025-10-28 20:09:34', '2025-10-28 20:09:34');
+(10, 'h@gmail.com', '$2y$10$Zk8cSuYt9uHYxvpVha0jp.g4C.Egr.sitCkg51sDtOyNHfa3ajn52', 'random', 'sdasd dsasa sadds', '+639630213864', 'fishery', 'sadsa', 'verified', 'active', 0, NULL, '45354', '2025-10-28 11:14:38', '2025-10-28 21:19:27', '2025-10-28 21:19:27'),
+(11, 'testtest@gmail.com', '$2y$10$ZkTEIERYEx3rEErWsKoI5e.aIjSEVMxBueJXH8uGPAU2pZdAbQs3S', 'dfgdfg', 'Kel dfsdf', '+639444438749', 'fishery', 'fdgfdgfd', 'pending', 'active', 0, NULL, '333', '2025-10-29 00:05:31', '2025-10-29 00:05:31', NULL),
+(12, 'ey@gmail.com', '$2y$10$c48t0AxsfdpdRleyFprpHOu1BHmjW49o.r3Vf7lK1YFE5dAUtlGQe', 'Melissa Paresan', 'mark Plaza', '+639630213833', 'livestock', 'dsfdsfds', 'verified', 'active', 0, NULL, '35454455', '2025-10-29 00:31:43', '2025-10-29 00:33:04', '2025-10-29 00:33:04');
 
 -- --------------------------------------------------------
 
@@ -340,7 +346,16 @@ INSERT INTO `sessions` (`id`, `user_id`, `seller_id`, `admin_id`, `token`, `user
 (46, 2, NULL, NULL, '5fa87913b7e5a39538e2319293b04e4ecd373455a325f63cdd0fd4b0215db4c1', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-29 11:06:05', '2025-10-28 18:06:05'),
 (47, NULL, 10, NULL, '391ce53865fed8afb8e170b6a7368b7c5bf6668d1c4cbe24b97f407375ab7f0b', 'seller', '::1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36', '2025-10-29 13:09:34', '2025-10-28 20:09:34'),
 (48, NULL, NULL, 1, '32b8eba96d3017f1ec6ac3a2e03c7bad67d3c70b6ec37e9f86dd92822e2ea183', 'admin', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-29 13:10:37', '2025-10-28 20:10:37'),
-(49, 9, NULL, NULL, 'c35f9f545e974ef0d383dbad9a973e69b8317c47cf875e87e0bc5445b48272d0', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-29 13:11:51', '2025-10-28 20:11:51');
+(49, 9, NULL, NULL, 'c35f9f545e974ef0d383dbad9a973e69b8317c47cf875e87e0bc5445b48272d0', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-29 13:11:51', '2025-10-28 20:11:51'),
+(50, NULL, 10, NULL, 'fa6d993e40009c658f71d2e30c66dcd3b601d594a39253d610efa87bd5450b81', 'seller', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-29 13:28:38', '2025-10-28 20:28:38'),
+(51, NULL, NULL, 1, 'c579e36db936d77dd518170a05c7d64611ebe929642a29a73b08d148a5d7a706', 'admin', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-29 13:46:29', '2025-10-28 20:46:29'),
+(52, 9, NULL, NULL, '30a337a9afb5ef9c1f83ea692b5addaaa9f313626129a7f8f18ede861974ec34', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-29 13:49:56', '2025-10-28 20:49:56'),
+(53, 10, NULL, NULL, '6ee0445e78900b9cfeb7362c224ad356c169a718f82882d166e96b9394fc3777', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-29 14:02:42', '2025-10-28 21:02:42'),
+(54, NULL, NULL, 1, '5e57328541fded493940d64f0464c8a637caaae1eba91c5d556acd9c3f9ab78e', 'admin', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-29 14:03:30', '2025-10-28 21:03:30'),
+(55, 10, NULL, NULL, 'ca0e4f68d416a6f0b8eae29e2dfcd39fc6ea812b0926ff9586bd122c3f11d73e', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-29 14:06:50', '2025-10-28 21:06:50'),
+(56, NULL, 10, NULL, '9b0752380c82abd5cc5dca99fc1e098591b5dbd306b73f8123536ae04513309b', 'seller', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-29 14:19:27', '2025-10-28 21:19:27'),
+(57, NULL, NULL, 1, '269b470076ca8381e78cee5705c7d72e5c20d0a83c8b611b1f245592669775a7', 'admin', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-29 17:32:25', '2025-10-29 00:32:25'),
+(58, NULL, 12, NULL, 'b4dceb1a5f507a77efe45ed013ba5f65a5a92b96f025cf940618ba066d978777', 'seller', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-29 17:33:04', '2025-10-29 00:33:04');
 
 -- --------------------------------------------------------
 
@@ -369,7 +384,8 @@ CREATE TABLE `users` (
 
 INSERT INTO `users` (`id`, `email`, `password`, `first_name`, `last_name`, `phone`, `role`, `status`, `email_verified`, `created_at`, `updated_at`, `last_login`) VALUES
 (2, 'john@gmail.com', '$2y$10$QUYAKbvSi/RnNpH4tK3AEOXxbbO3OjcFKCYjsd/QXxPGlcs2JxK0.', 'romeo', 'Doe', '+6397485643834', 'customer', 'active', 0, '2025-10-28 11:35:24', '2025-10-28 18:06:05', '2025-10-28 18:06:05'),
-(9, 'test@gmail.com', '$2y$10$OxgerGAaP4IWhujzaGuvOuEaaw9uD4uahFM6uSnz1g6458OsOfi86', 'tyt', 'ytyt', '+639095677546', 'customer', 'active', 0, '2025-10-28 16:23:36', '2025-10-28 20:11:51', '2025-10-28 20:11:51');
+(9, 'test@gmail.com', '$2y$10$OxgerGAaP4IWhujzaGuvOuEaaw9uD4uahFM6uSnz1g6458OsOfi86', 'tyt', 'ytyt', '+639095677546', 'customer', 'active', 0, '2025-10-28 16:23:36', '2025-10-28 20:49:56', '2025-10-28 20:49:56'),
+(10, 'serious@gmail.com', '$2y$10$GsmDQE8596Eq0mm51scZjuaUy9vE39MSXwG7yqGW1CS5YQQGt6Yfy', 'try', 'dsfsf', '+63954664566745', 'customer', 'active', 0, '2025-10-28 21:02:42', '2025-10-28 21:06:50', '2025-10-28 21:06:50');
 
 --
 -- Indexes for dumped tables
@@ -505,7 +521,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `addresses`
 --
 ALTER TABLE `addresses`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- AUTO_INCREMENT for table `admins`
@@ -553,25 +569,25 @@ ALTER TABLE `order_items`
 -- AUTO_INCREMENT for table `products`
 --
 ALTER TABLE `products`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `sellers`
 --
 ALTER TABLE `sellers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- AUTO_INCREMENT for table `sessions`
 --
 ALTER TABLE `sessions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=50;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=59;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- Constraints for dumped tables

@@ -55,9 +55,21 @@ if (!$user || !Auth::verifyPassword($password, $user['password'])) {
     Response::error('Invalid email or password', 401);
 }
 
-// Check if user is active
-if (isset($user['status']) && $user['status'] !== 'active') {
-    Response::error('Account is not active', 403);
+// Check status for all user types
+if (isset($user['status'])) {
+    if ($user['status'] === 'pending') {
+        if ($userType === 'user') {
+            Response::error('Your account is pending admin approval. Please wait for verification before logging in.', 403);
+        }
+    } elseif ($user['status'] !== 'active') {
+        $statusMessage = 'Account is not active';
+        if ($user['status'] === 'inactive') {
+            $statusMessage = 'Your account has been deactivated. Please contact support.';
+        } elseif ($user['status'] === 'suspended') {
+            $statusMessage = 'Your account has been suspended. Please contact support.';
+        }
+        Response::error($statusMessage, 403);
+    }
 }
 
 // Additional check for sellers - must be verified by admin

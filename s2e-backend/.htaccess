@@ -58,6 +58,13 @@ RewriteCond %{REQUEST_METHOD} DELETE
 RewriteRule ^api/seller/products/([0-9]+)/?$ api/seller/products/delete.php [L,QSA]
 RewriteRule ^api/seller/products/?$ api/seller/products.php [L,QSA]
 
+# Seller stock locations routes
+RewriteCond %{REQUEST_METHOD} PUT
+RewriteRule ^api/seller/stock-locations/([0-9]+)/?$ api/seller/stock-locations.php [L,QSA]
+RewriteCond %{REQUEST_METHOD} DELETE
+RewriteRule ^api/seller/stock-locations/([0-9]+)/?$ api/seller/stock-locations.php [L,QSA]
+RewriteRule ^api/seller/stock-locations/?$ api/seller/stock-locations.php [L,QSA]
+
 # Default to index.php
 RewriteRule ^$ index.php [L]
 

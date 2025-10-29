@@ -100,24 +100,32 @@ try {
     
     $sellerId = $db->lastInsertId();
     
-    // Insert business address
+    // Insert business address with PSGC codes
     $stmt = $db->prepare("
         INSERT INTO addresses (
             seller_id,
             address_type,
             province,
+            province_code,
             municipality,
+            municipality_code,
+            city,
             barangay,
+            barangay_code,
             created_at,
             updated_at
-        ) VALUES (?, 'business', ?, ?, ?, NOW(), NOW())
+        ) VALUES (?, 'business', ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
     ");
     
     $stmt->execute([
         $sellerId,
         $data['province'],
+        $data['province_code'] ?? null,
         $data['municipality'],
-        $data['barangay']
+        $data['municipality_code'] ?? null,
+        $data['municipality'], // city same as municipality
+        $data['barangay'],
+        $data['barangay_code'] ?? null
     ]);
     
     // Commit transaction

@@ -22,11 +22,27 @@ if (!$user || $user['user_type'] !== 'seller') {
     Response::unauthorized('Seller access required');
 }
 
-// Get posted data
-$data = json_decode(file_get_contents("php://input"));
+// Get posted data (support both JSON and FormData)
+$contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+error_log('📝 Content-Type: ' . $contentType);
+error_log('📝 POST data: ' . json_encode($_POST));
+error_log('📝 FILES data: ' . json_encode($_FILES));
+
+if (strpos($contentType, 'multipart/form-data') !== false) {
+    error_log('✅ Using FormData mode');
+    // Handle FormData (with file upload)
+    $title = $_POST['title'] ?? null;
+    $price = $_POST['price'] ?? null;
+} else {
+    error_log('✅ Using JSON mode');
+    // Handle JSON
+    $data = json_decode(file_get_contents("php://input"));
+    $title = $data->title ?? null;
+    $price = $data->price ?? null;
+}
 
 // Validate required fields
-if (!isset($data->title) || !isset($data->price)) {
+if (!$title || !$price) {
     Response::validationError([
         'title' => 'Product title is required',
         'price' => 'Price is required'
@@ -38,24 +54,74 @@ $database = new Database();
 $db = $database->getConnection();
 
 // Generate slug from title
-$slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $data->title)));
+$slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $title)));
 $slug = $slug . '-' . uniqid();
 
 // Prepare data
-$title = trim($data->title);
-$description = $data->description ?? null;
-$price = $data->price;
-$compareAtPrice = $data->compare_at_price ?? null;
-$categoryId = $data->category_id ?? null;
-$sku = $data->sku ?? null;
-$stockQuantity = $data->stock_quantity ?? 0;
-$unit = $data->unit ?? 'kg';
-$status = $data->status ?? 'draft';
-$thumbnail = $data->thumbnail ?? null;
-$images = json_encode($data->images ?? []);
-$tags = json_encode($data->tags ?? []);
+if (strpos($contentType, 'multipart/form-data') !== false) {
+    // Get data from $_POST
+    $description = $_POST['description'] ?? null;
+    $compareAtPrice = $_POST['compare_at_price'] ?? null;
+    $categoryId = $_POST['category_id'] ?? null;
+    $sku = $_POST['sku'] ?? null;
+    $stockQuantity = $_POST['stock_quantity'] ?? 0;
+    $unit = $_POST['unit'] ?? 'kg';
+    $status = $_POST['status'] ?? 'draft';
+    $tags = $_POST['tags'] ?? '[]';
+    
+    // Handle image upload
+    $thumbnail = null;
+    if (isset($_FILES['image'])) {
+        error_log('📸 Image file received');
+        error_log('📸 File error code: ' . $_FILES['image']['error']);
+        
+        if ($_FILES['image']['error'] === UPLOAD_ERR_OK) {
+            $uploadDir = __DIR__ . '/../../uploads/products/';
+            error_log('📸 Upload directory: ' . $uploadDir);
+            
+            // Create directory if it doesn't exist
+            if (!file_exists($uploadDir)) {
+                error_log('📸 Creating upload directory...');
+                mkdir($uploadDir, 0777, true);
+            }
+            
+            $fileExtension = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
+            $fileName = 'product_' . uniqid() . '.' . $fileExtension;
+            $filePath = $uploadDir . $fileName;
+            
+            error_log('📸 Attempting to save to: ' . $filePath);
+            
+            if (move_uploaded_file($_FILES['image']['tmp_name'], $filePath)) {
+                $thumbnail = '/uploads/products/' . $fileName;
+                error_log('✅ Image uploaded successfully: ' . $thumbnail);
+            } else {
+                error_log('❌ Failed to move uploaded file');
+            }
+        } else {
+            error_log('❌ File upload error: ' . $_FILES['image']['error']);
+        }
+    } else {
+        error_log('⚠️ No image file in request');
+    }
+    
+    $images = json_encode([]);
+} else {
+    // Get data from JSON
+    $description = $data->description ?? null;
+    $compareAtPrice = $data->compare_at_price ?? null;
+    $categoryId = $data->category_id ?? null;
+    $sku = $data->sku ?? null;
+    $stockQuantity = $data->stock_quantity ?? 0;
+    $unit = $data->unit ?? 'kg';
+    $status = $data->status ?? 'draft';
+    $thumbnail = $data->thumbnail ?? null;
+    $images = json_encode($data->images ?? []);
+    $tags = json_encode($data->tags ?? []);
+}
 
 // Insert product
+error_log('💾 About to insert product with thumbnail: ' . ($thumbnail ?? 'NULL'));
+
 $query = "INSERT INTO products 
           (seller_id, category_id, title, slug, description, price, compare_at_price, 
            sku, stock_quantity, unit, status, thumbnail, images, tags)
