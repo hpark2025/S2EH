@@ -1,22 +1,6 @@
-import { useState, useEffect } from 'react'
-
 const ApproveProductModal = ({ show, onClose, onApprove, product }) => {
-  const [approvalNotes, setApprovalNotes] = useState('')
-
-  useEffect(() => {
-    if (!show) {
-      setApprovalNotes('')
-    }
-  }, [show])
-
   const handleSubmit = () => {
-    const approvalData = {
-      notes: approvalNotes,
-      approvedAt: new Date().toISOString(),
-      approvedBy: 'admin' // This would be the current admin user
-    }
-    onApprove(product.id, approvalData)
-    onClose()
+    onApprove()
   }
 
   if (!show || !product) return null
@@ -61,17 +45,6 @@ const ApproveProductModal = ({ show, onClose, onApprove, product }) => {
                 </small>
               </div>
             </div>
-          </div>
-          
-          <div className="form-group mb-3">
-            <label>Approval Notes (optional)</label>
-            <textarea 
-              className="form-control" 
-              rows="3" 
-              value={approvalNotes}
-              onChange={(e) => setApprovalNotes(e.target.value)}
-              placeholder="Add any notes about this approval..."
-            />
           </div>
           
           <div className="alert alert-success">

@@ -6,6 +6,10 @@ Header set Access-Control-Allow-Origin "*"
 Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
 Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
 
+# Pass Authorization header to PHP (fix for Apache CGI/FastCGI mode)
+RewriteCond %{HTTP:Authorization} .+
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
 # API Routes
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
@@ -52,7 +56,8 @@ RewriteRule ^api/seller/test/?$ api/seller/test.php [L,QSA]
 RewriteRule ^api/seller/products-test/?$ api/seller/products-test.php [L,QSA]
 RewriteRule ^api/seller/me/?$ api/seller/me.php [L,QSA]
 # Seller products routes (specific routes MUST come before general route)
-RewriteCond %{REQUEST_METHOD} PUT
+RewriteCond %{REQUEST_METHOD} PUT [OR]
+RewriteCond %{REQUEST_METHOD} POST
 RewriteRule ^api/seller/products/([0-9]+)/?$ api/seller/products/update.php [L,QSA]
 RewriteCond %{REQUEST_METHOD} DELETE
 RewriteRule ^api/seller/products/([0-9]+)/?$ api/seller/products/delete.php [L,QSA]

@@ -31,17 +31,14 @@ export const sellerAPI = {
     // Get seller's products
     getProducts: async (params = {}) => {
       try {
-        console.log('📡 Fetching seller products from PHP backend (DIRECT)...', params);
+        console.log('📡 Using native fetch to bypass Axios issues...');
         
-        // TEMPORARY: Use simple endpoint to bypass routing/CORS issues
-        const url = `http://localhost:8080/S2EH/s2e-backend/seller-products-simple.php`;
-        
-        const response = await fetch(url, {
+        const token = localStorage.getItem('sellerToken');
+        const response = await fetch('http://localhost:8080/S2EH/s2e-backend/seller-products-simple.php', {
           method: 'GET',
-          mode: 'cors', // Explicitly set CORS mode
-          credentials: 'omit', // Don't send credentials for now to avoid CORS preflight issues
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
           }
         });
         
@@ -51,9 +48,9 @@ export const sellerAPI = {
         
         const data = await response.json();
         console.log('✅ Full response:', data);
-        console.log('✅ Products data:', data.data);
+        console.log('✅ Products array:', data.data);
         
-        // Return the data object which contains products, pagination, stats
+        // Extract the nested data property from PHP backend response
         return data.data || data;
       } catch (error) {
         console.error('❌ Failed to fetch seller products:', error);
@@ -93,30 +90,18 @@ export const sellerAPI = {
     // Update product
     updateProduct: async (id, productData) => {
       try {
-        console.log('📡 Updating product with PHP backend (SIMPLE):', id);
+        console.log('📡 Updating product with PHP backend:', id);
         console.log('📡 Product data:', productData);
+        console.log('📡 Is FormData?', productData instanceof FormData);
         
         if (!id) {
           throw new Error('Product ID is required for update');
         }
         
-        const response = await fetch(`http://localhost:8080/S2EH/s2e-backend/seller-product-update-simple.php?id=${id}`, {
-          method: 'PUT',
-          mode: 'cors',
-          credentials: 'omit',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(productData)
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        console.log('✅ Product updated:', data);
-        return data;
+        // Use Axios for consistent FormData handling (has interceptor)
+        const response = await api.post(`/api/seller/products/${id}`, productData);
+        console.log('✅ Product updated:', response.data);
+        return response.data;
       } catch (error) {
         console.error('❌ Failed to update product:', error);
         throw error;

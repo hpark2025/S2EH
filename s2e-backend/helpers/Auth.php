@@ -89,6 +89,11 @@ class Auth {
         $headers = apache_request_headers();
         $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? null;
         
+        // Fallback to environment variable (set by .htaccess for CGI/FastCGI mode)
+        if (!$authHeader && isset($_SERVER['HTTP_AUTHORIZATION'])) {
+            $authHeader = $_SERVER['HTTP_AUTHORIZATION'];
+        }
+        
         if (!$authHeader) {
             return null;
         }

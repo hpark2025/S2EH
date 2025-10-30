@@ -14,6 +14,8 @@ export default function SellerProductsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [useSimpleForm, setUseSimpleForm] = useState(true); // Use SimpleProductForm by default for the new workflow
+  const [editImage, setEditImage] = useState(null); // For edit modal image upload
+  const [editImagePreview, setEditImagePreview] = useState(null); // For edit modal image preview
 
   // Form state for adding/editing products
   const [formData, setFormData] = useState({
@@ -62,12 +64,14 @@ export default function SellerProductsPage() {
       console.log('🔍 Seller products response:', response);
       
       // PHP backend returns: { products, pagination, stats }
+      console.log('🔍 DEBUG SELLER ID FROM BACKEND:', response.debug_seller_id);
       const productsData = response.products || [];
       console.log('🔍 Products array:', productsData);
       console.log('🔍 Total products:', productsData.length);
       
       if (productsData.length > 0) {
         console.log('🔍 First product:', productsData[0]);
+        console.log('🔍 First product seller_id:', productsData[0].seller_id);
       }
       
       setProducts(productsData);
@@ -138,6 +142,21 @@ export default function SellerProductsPage() {
     });
   };
 
+  // Handle image change for edit modal
+  const handleEditImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setEditImage(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setEditImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleEditProduct = async (e) => {
     e.preventDefault();
     try {
@@ -150,17 +169,34 @@ export default function SellerProductsPage() {
         return;
       }
       
-      // Format data for PHP backend (simple structure)
-      const productData = {
-        title: formData.title.trim(),
-        description: formData.description.trim(),
-        price: parseFloat(formData.price || 0), // PHP backend: decimal price
-        stock_quantity: parseInt(formData.inventory_quantity) || 0, // PHP backend: stock_quantity
-        status: formData.status,
-        category_id: formData.category_id || null,
-        sku: editingProduct.sku || `SKU-${Date.now()}`,
-        unit: 'kg'
-      };
+      // Use FormData if there's a new image, otherwise use JSON
+      let productData;
+      
+      if (editImage) {
+        // If there's a new image, use FormData
+        productData = new FormData();
+        productData.append('title', formData.title.trim());
+        productData.append('description', formData.description.trim());
+        productData.append('price', parseFloat(formData.price || 0));
+        productData.append('stock_quantity', parseInt(formData.inventory_quantity) || 0);
+        productData.append('status', formData.status);
+        productData.append('category_id', formData.category_id || '');
+        productData.append('sku', editingProduct.sku || `SKU-${Date.now()}`);
+        productData.append('unit', 'kg');
+        productData.append('image', editImage);
+      } else {
+        // No new image, use JSON
+        productData = {
+          title: formData.title.trim(),
+          description: formData.description.trim(),
+          price: parseFloat(formData.price || 0),
+          stock_quantity: parseInt(formData.inventory_quantity) || 0,
+          status: formData.status,
+          category_id: formData.category_id || null,
+          sku: editingProduct.sku || `SKU-${Date.now()}`,
+          unit: 'kg'
+        };
+      }
       
       console.log('📡 Product update data:', productData);
       console.log('📡 Product ID:', editingProduct.id);
@@ -215,6 +251,18 @@ export default function SellerProductsPage() {
     });
     
     setEditingProduct(product);
+    
+    // Set image preview if product has an image
+    if (product.thumbnail) {
+      const imageUrl = product.thumbnail.startsWith('http') 
+        ? product.thumbnail 
+        : `http://localhost:8080/S2EH/s2e-backend${product.thumbnail}`;
+      setEditImagePreview(imageUrl);
+    } else {
+      setEditImagePreview(null);
+    }
+    setEditImage(null); // Reset file input
+    
     setFormData({
       title: product.title || '',
       description: product.description || '',
@@ -649,6 +697,25 @@ export default function SellerProductsPage() {
                         <option value="draft">Draft</option>
                         <option value="proposed">Proposed</option>
                       </select>
+                    </div>
+                    <div className="col-12">
+                      <label className="form-label fw-semibold">Product Image</label>
+                      <input
+                        type="file"
+                        className="form-control"
+                        onChange={handleEditImageChange}
+                        accept="image/*"
+                      />
+                      {editImagePreview && (
+                        <div className="mt-3">
+                          <img 
+                            src={editImagePreview} 
+                            alt="Preview" 
+                            style={{ maxWidth: '200px', maxHeight: '200px', objectFit: 'cover' }}
+                            className="rounded"
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

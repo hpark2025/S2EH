@@ -31,12 +31,20 @@ require_once __DIR__ . '/../../helpers/Auth.php';
 error_log("📡 Headers: " . json_encode(apache_request_headers()));
 error_log("📡 Request Method: " . $_SERVER['REQUEST_METHOD']);
 error_log("📡 Request URI: " . $_SERVER['REQUEST_URI']);
+error_log("📡 HTTP_AUTHORIZATION from \$_SERVER: " . ($_SERVER['HTTP_AUTHORIZATION'] ?? 'NOT SET'));
+error_log("📡 REDIRECT_HTTP_AUTHORIZATION: " . ($_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? 'NOT SET'));
+error_log("📡 All \$_SERVER keys with AUTH: " . json_encode(array_filter(array_keys($_SERVER), function($key) { return strpos($key, 'AUTH') !== false; })));
 
 // Only accept GET requests
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     error_log("❌ Wrong method: " . $_SERVER['REQUEST_METHOD']);
     Response::error('Method not allowed', 405);
 }
+
+// FORCE LOGGING
+error_log("==================== PRODUCTS ENDPOINT START ====================");
+error_log("REQUEST URI: " . $_SERVER['REQUEST_URI']);
+error_log("REQUEST METHOD: " . $_SERVER['REQUEST_METHOD']);
 
 // Authenticate seller
 try {
@@ -52,12 +60,20 @@ try {
     }
     
     $sellerId = $user['id'];
-    error_log("✅ Seller products endpoint - Seller ID: $sellerId");
+    error_log("✅✅✅ SELLER ID: $sellerId ✅✅✅");
+    error_log("🔍 User email: " . $user['email']);
+    error_log("🔍 Business name: " . ($user['business_name'] ?? 'N/A'));
+    
+    // TEMPORARY DEBUG: Return seller info in response header
+    header("X-Debug-Seller-ID: $sellerId");
+    
 } catch (Exception $e) {
     error_log("❌ Auth exception: " . $e->getMessage());
     error_log("❌ Stack trace: " . $e->getTraceAsString());
     Response::serverError('Authentication error: ' . $e->getMessage());
 }
+
+error_log("==================== CONTINUING WITH SELLER ID: $sellerId ====================");
 
 // Get query parameters
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
@@ -151,7 +167,9 @@ $statusCountStmt->bindValue(':seller_id', $sellerId);
 $statusCountStmt->execute();
 $statusCounts = $statusCountStmt->fetch();
 
+// TEMPORARY DEBUG: Add seller_id to response
 Response::success([
+    'debug_seller_id' => $sellerId, // TEMPORARY DEBUG
     'products' => $products,
     'pagination' => [
         'page' => $page,

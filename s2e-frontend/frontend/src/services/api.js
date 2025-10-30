@@ -7,6 +7,7 @@ const api = axios.create({
   baseURL: MEDUSA_CONFIG.BACKEND_URL,
   timeout: 10000, // 10 seconds timeout
   headers: getMedusaHeaders(),
+  withCredentials: true, // Send cookies with requests
   validateStatus: status => status >= 200 && status < 500 // Handle 4xx errors in responses
 });
 

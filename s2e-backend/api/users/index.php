@@ -4,21 +4,17 @@
  * GET /api/users - Get all users/customers for admin
  */
 
-// Set CORS headers FIRST - support both port 5173 and 5174
-$origin = $_SERVER['HTTP_ORIGIN'] ?? 'http://localhost:5174';
-if (in_array($origin, ['http://localhost:5173', 'http://localhost:5174'])) {
-    header("Access-Control-Allow-Origin: $origin");
-} else {
-    header("Access-Control-Allow-Origin: http://localhost:5174");
-}
+// Set CORS headers FIRST - simple wildcard for admin endpoints
+header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
-header("Access-Control-Allow-Credentials: true");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-Admin-Token");
+header("Access-Control-Max-Age: 86400"); // Cache preflight for 24 hours
 header("Content-Type: application/json; charset=UTF-8");
 
-// Handle preflight
+// Handle preflight - MUST return 200 with CORS headers
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
+    echo json_encode(['status' => 'ok']);
     exit();
 }
 

@@ -1,58 +1,90 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   AvatarChangeModal,
   EditProfileModal,
   VerificationModal
 } from '../../components/SellerModals'
+import { sellerAPI } from '../../services/sellerAPI'
 
 const SellerProfilePage = () => {
   // Modal state management
   const [showAvatarModal, setShowAvatarModal] = useState(false)
   const [showEditProfileModal, setShowEditProfileModal] = useState(false)
   const [showVerificationModal, setShowVerificationModal] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   // Profile data
-  const [profileData] = useState({
-    personal: {
-      firstName: 'Juan Dela Cruz',
-      lastName: 'Santos',
-      fullName: 'Juan Dela Cruz Santos',
-      email: 'juan.santos@email.com',
-      phone: '+63 917 123 4567',
-      birthDate: 'March 15, 1985',
-      gender: 'Male',
-      address: 'Purok 3, Barangay San Vicente, Sagnay, Camarines Sur'
-    },
-    business: {
-      businessName: "Juan's Fresh Farm Products",
-      businessType: 'Agricultural Products',
-      dtiBusiness: 'DTI-05-2024-001234',
-      birTin: '123-456-789-001',
-      mayorPermit: 'MP-2024-0567',
-      description:
-        'Premium quality agricultural products from Sagnay, Camarines Sur specializing in fresh rice, vegetables, and organic products.'
-    },
-    bank: {
-      bankName: 'BDO Unibank',
-      accountType: 'Savings Account',
-      accountNumber: '****1234',
-      accountName: 'Juan Dela Cruz Santos'
-    },
-    stats: {
-      products: 45,
-      orders: 287,
-      customers: 156,
-      revenue: '₱128.5K'
-    },
-    verification: {
-      identity: true,
-      email: true,
-      phone: true,
-      business: true,
-      bank: true,
-      isFullyVerified: true
+  const [profileData, setProfileData] = useState(null)
+
+  // Load seller profile
+  useEffect(() => {
+    loadSellerProfile()
+  }, [])
+
+  const loadSellerProfile = async () => {
+    try {
+      setLoading(true)
+      const response = await sellerAPI.getProfile()
+      console.log('📊 Seller profile:', response)
+      
+      const seller = response.data
+      
+      // Format the data
+      setProfileData({
+        personal: {
+          fullName: seller.owner_name,
+          email: seller.email,
+          phone: seller.phone,
+          businessName: seller.business_name
+        },
+        business: {
+          businessName: seller.business_name,
+          businessType: seller.business_type,
+          businessPermit: seller.business_permit,
+          description: seller.business_description || 'No description provided',
+          taxId: seller.tax_id || 'N/A'
+        },
+        stats: {
+          products: 0,
+          orders: 0,
+          customers: 0,
+          revenue: '₱0'
+        },
+        verification: {
+          identity: seller.verification_status === 'verified',
+          email: seller.verification_status === 'verified',
+          phone: seller.verification_status === 'verified',
+          business: seller.is_lgu_verified === 1,
+          isFullyVerified: seller.verification_status === 'verified' && seller.is_lgu_verified === 1
+        }
+      })
+    } catch (error) {
+      console.error('❌ Failed to load seller profile:', error)
+    } finally {
+      setLoading(false)
     }
-  })
+  }
+
+  if (loading) {
+    return (
+      <div className="seller-content p-4">
+        <div className="text-center py-5">
+          <div className="spinner-border text-success" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="mt-3 text-muted">Loading profile...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!profileData) {
+    return (
+      <div className="seller-content p-4">
+        <div className="alert alert-danger">Failed to load profile data</div>
+      </div>
+    )
+  }
 
   const getVerificationIcon = (isVerified) => {
     return isVerified ? (
@@ -60,6 +92,13 @@ const SellerProfilePage = () => {
     ) : (
       <i className="bi bi-x-circle text-danger"></i>
     )
+  }
+
+  const getInitials = (name) => {
+    if (!name) return '?'
+    const names = name.trim().split(' ')
+    if (names.length === 1) return names[0].charAt(0).toUpperCase()
+    return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase()
   }
 
   return (
@@ -70,7 +109,7 @@ const SellerProfilePage = () => {
           <div className="row align-items-center">
             <div className="col-md-auto">
               <div className="profile-avatar-container">
-                <div className="profile-avatar-large">JDS</div>
+                <div className="profile-avatar-large">{getInitials(profileData.personal.fullName)}</div>
                 <button
                   className="avatar-edit-btn"
                   onClick={() => setShowAvatarModal(true)}
@@ -87,18 +126,19 @@ const SellerProfilePage = () => {
               </p>
               <div className="d-flex align-items-center gap-3 mb-3 flex-wrap">
                 <div className="d-flex align-items-center">
-                  <i className="bi bi-star-fill text-warning me-1"></i>
-                  <span className="fw-semibold">4.8</span>
-                  <span className="text-muted ms-1">(127 reviews)</span>
+                  <i className="bi bi-envelope text-muted me-1"></i>
+                  <span className="text-muted">{profileData.personal.email}</span>
                 </div>
                 <div className="d-flex align-items-center">
-                  <i className="bi bi-calendar3 text-muted me-1"></i>
-                  <span className="text-muted">Member since March 2024</span>
+                  <i className="bi bi-phone text-muted me-1"></i>
+                  <span className="text-muted">{profileData.personal.phone}</span>
                 </div>
-                <div className="d-flex align-items-center">
-                  <i className="bi bi-geo-alt text-muted me-1"></i>
-                  <span className="text-muted">Sagnay, Camarines Sur</span>
-                </div>
+                {profileData.verification.isFullyVerified && (
+                  <div className="d-flex align-items-center">
+                    <i className="bi bi-patch-check-fill text-success me-1"></i>
+                    <span className="text-success fw-semibold">Verified Seller</span>
+                  </div>
+                )}
               </div>
               <div className="profile-stats">
                 <div className="stat-item">
@@ -202,36 +242,6 @@ const SellerProfilePage = () => {
                     }`}
                     key={key}
                   >
-                    <div className="info-group">
-                      <label className="info-label">
-                        {key
-                          .replace(/([A-Z])/g, ' $1')
-                          .replace(/^./, (str) => str.toUpperCase())}
-                      </label>
-                      <div className="info-value">{value}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Bank Information */}
-          <div className="seller-card mb-4">
-            <div className="card-header">
-              <h5 className="card-title">Bank Information</h5>
-              <button
-                className="btn btn-sm btn-outline-primary"
-                onClick={() => setShowEditProfileModal(true)}
-              >
-                <i className="bi bi-pencil me-1"></i>
-                Edit
-              </button>
-            </div>
-            <div className="card-body">
-              <div className="row">
-                {Object.entries(profileData.bank).map(([key, value]) => (
-                  <div className="col-md-6" key={key}>
                     <div className="info-group">
                       <label className="info-label">
                         {key

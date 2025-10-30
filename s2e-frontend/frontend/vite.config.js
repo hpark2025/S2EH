@@ -15,6 +15,7 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
         secure: false,
+        cookieDomainRewrite: 'localhost', // Forward cookies properly
         rewrite: (path) => path.replace(/^\/api/, '/S2EH/s2e-backend/api'),
         configure: (proxy, _options) => {
           proxy.on('error', (err, _req, _res) => {
@@ -22,6 +23,21 @@ export default defineConfig({
           });
           proxy.on('proxyReq', (proxyReq, req, _res) => {
             console.log('Sending Request to the Target:', req.method, req.url);
+            console.log('Request headers:', JSON.stringify(req.headers));
+            
+            // Forward cookies from the original request
+            if (req.headers.cookie) {
+              proxyReq.setHeader('Cookie', req.headers.cookie);
+            }
+            
+            // Forward Authorization header (case-insensitive check)
+            const authHeader = req.headers.authorization || req.headers.Authorization;
+            if (authHeader) {
+              proxyReq.setHeader('Authorization', authHeader);
+              console.log('✅ Forwarding Authorization header:', authHeader.substring(0, 30) + '...');
+            } else {
+              console.log('❌ NO Authorization header found in request');
+            }
           });
           proxy.on('proxyRes', (proxyRes, req, _res) => {
             console.log('Received Response from the Target:', proxyRes.statusCode, req.url);

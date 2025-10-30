@@ -62,7 +62,7 @@ if (strpos($contentType, 'multipart/form-data') !== false) {
     // Get data from $_POST
     $description = $_POST['description'] ?? null;
     $compareAtPrice = $_POST['compare_at_price'] ?? null;
-    $categoryId = $_POST['category_id'] ?? null;
+    $categoryId = ($_POST['category_id'] ?? null) ?: null; // Convert empty string to null
     $sku = $_POST['sku'] ?? null;
     $stockQuantity = $_POST['stock_quantity'] ?? 0;
     $unit = $_POST['unit'] ?? 'kg';
@@ -109,7 +109,7 @@ if (strpos($contentType, 'multipart/form-data') !== false) {
     // Get data from JSON
     $description = $data->description ?? null;
     $compareAtPrice = $data->compare_at_price ?? null;
-    $categoryId = $data->category_id ?? null;
+    $categoryId = ($data->category_id ?? null) ?: null; // Convert empty string to null
     $sku = $data->sku ?? null;
     $stockQuantity = $data->stock_quantity ?? 0;
     $unit = $data->unit ?? 'kg';

@@ -1,4 +1,66 @@
-import api from './api';
+// Helper function to get auth token
+const getAuthToken = () => {
+  const cookies = document.cookie.split(';');
+  const tokenCookie = cookies.find(c => c.trim().startsWith('adminToken='));
+  return tokenCookie ? tokenCookie.split('=')[1] : null;
+};
+
+// Use Vite proxy to avoid CORS issues - browser security blocks direct backend calls
+// Vite proxy will rewrite /api/* to http://localhost:8080/S2EH/s2e-backend/api/*
+// This makes requests appear same-origin to the browser
+
+// Helper function for fetch requests
+const fetchAPI = async (endpoint, options = {}) => {
+  try {
+    const token = getAuthToken();
+    // Use Vite proxy path - this bypasses browser CORS blocking
+    const url = `/api${endpoint}`;
+    
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers
+    };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    console.log(`📡 Fetching via Vite proxy: ${url}`);
+    console.log(`📡 Headers:`, headers);
+    console.log(`📡 Method:`, options.method || 'GET');
+    
+    let response;
+    try {
+      response = await fetch(url, {
+        method: options.method || 'GET',
+        headers,
+        body: options.body,
+        credentials: 'omit' // Use omit since we use Bearer tokens, not cookies
+      });
+      console.log(`✅ Response received:`, response);
+      console.log(`✅ Response status: ${response.status}`);
+    } catch (fetchError) {
+      console.error(`❌ Fetch failed:`, fetchError);
+      console.error(`❌ URL was: ${url}`);
+      console.error(`❌ This usually means: network error, server down, or CORS issue`);
+      throw fetchError;
+    }
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ API Error (${response.status}):`, errorText);
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log(`✅ Response data:`, data);
+    return data;
+  } catch (error) {
+    console.error('❌ fetchAPI error:', error.message);
+    console.error('❌ Full error:', error);
+    throw error;
+  }
+};
 
 export const adminAPI = {
   // Sellers management (for Admin Producers Page)
@@ -6,9 +68,22 @@ export const adminAPI = {
     getAll: async (params = {}) => {
       try {
         console.log('📡 Fetching sellers with params:', params);
-        const response = await api.get('/api/sellers', { params });
-        console.log('✅ Sellers response:', response.data);
-        return response.data;
+        
+        // Build query string
+        const queryParams = new URLSearchParams();
+        if (params.verification_status) {
+          queryParams.append('verification_status', params.verification_status);
+        }
+        if (params.status) {
+          queryParams.append('status', params.status);
+        }
+        
+        const queryString = queryParams.toString();
+        const endpoint = `/sellers${queryString ? `?${queryString}` : ''}`;
+        
+        const response = await fetchAPI(endpoint);
+        console.log('✅ Sellers response:', response);
+        return response;
       } catch (error) {
         console.error('❌ Failed to fetch sellers:', error);
         throw error;
@@ -18,9 +93,12 @@ export const adminAPI = {
     create: async (sellerData) => {
       try {
         console.log('📡 Creating seller:', sellerData);
-        const response = await api.post('/api/sellers/create', sellerData);
-        console.log('✅ Seller created:', response.data);
-        return response.data;
+        const response = await fetchAPI('/sellers/create', {
+          method: 'POST',
+          body: JSON.stringify(sellerData)
+        });
+        console.log('✅ Seller created:', response);
+        return response;
       } catch (error) {
         console.error('❌ Failed to create seller:', error);
         throw error;
@@ -29,9 +107,12 @@ export const adminAPI = {
     
     approve: async (sellerId) => {
       try {
-        const response = await api.post('/api/sellers/approve', { seller_id: sellerId });
-        console.log('✅ Seller approved:', response.data);
-        return response.data;
+        const response = await fetchAPI('/sellers/approve', {
+          method: 'POST',
+          body: JSON.stringify({ seller_id: sellerId })
+        });
+        console.log('✅ Seller approved:', response);
+        return response;
       } catch (error) {
         console.error('❌ Failed to approve seller:', error);
         throw error;
@@ -40,12 +121,12 @@ export const adminAPI = {
     
     reject: async (sellerId, reason = null) => {
       try {
-        const response = await api.post('/api/sellers/reject', { 
-          seller_id: sellerId,
-          reason: reason
+        const response = await fetchAPI('/sellers/reject', {
+          method: 'POST',
+          body: JSON.stringify({ seller_id: sellerId, reason })
         });
-        console.log('✅ Seller rejected:', response.data);
-        return response.data;
+        console.log('✅ Seller rejected:', response);
+        return response;
       } catch (error) {
         console.error('❌ Failed to reject seller:', error);
         throw error;
@@ -58,43 +139,43 @@ export const adminAPI = {
       const { page = 1, limit = 100, role = 'seller', status, search } = params;
       
       try {
-        let endpoint = '/api/users';
+        let endpoint = '/users';
         
         // Use appropriate endpoint based on role
         if (role === 'seller') {
-          endpoint = '/api/sellers';
+          endpoint = '/sellers';
         } else if (role === 'customer' || role === 'user') {
-          endpoint = '/api/users';
+          endpoint = '/users';
         }
         
-        const response = await api.get(endpoint, { 
-          params: { page, limit, status, search } 
-        });
+        // Build query params
+        const queryParams = new URLSearchParams();
+        if (page) queryParams.append('page', page);
+        if (limit) queryParams.append('limit', limit);
+        if (status) queryParams.append('status', status);
+        if (search) queryParams.append('search', search);
         
-        console.log('✅ Admin API Users Response:', response.data);
+        const queryString = queryParams.toString();
+        const fullEndpoint = `${endpoint}${queryString ? `?${queryString}` : ''}`;
         
-        return response.data;
+        const response = await fetchAPI(fullEndpoint);
+        console.log('✅ Admin API Users Response:', response);
+        
+        return response;
       } catch (error) {
         console.error('❌ Failed to fetch users:', error);
-        
-        // Log detailed error information
-        if (error.response) {
-          console.error('Error Response:', {
-            status: error.response.status,
-            data: error.response.data,
-            headers: error.response.headers
-          });
-        }
-        
         throw error;
       }
     },
     
     approveUser: async (userId) => {
       try {
-        const response = await api.post('/api/users/approve', { user_id: userId });
-        console.log('✅ User approved:', response.data);
-        return response.data;
+        const response = await fetchAPI('/users/approve', {
+          method: 'POST',
+          body: JSON.stringify({ user_id: userId })
+        });
+        console.log('✅ User approved:', response);
+        return response;
       } catch (error) {
         console.error('❌ Failed to approve user:', error);
         throw error;
@@ -103,12 +184,12 @@ export const adminAPI = {
     
     rejectUser: async (userId, reason = null) => {
       try {
-        const response = await api.post('/api/users/reject', { 
-          user_id: userId,
-          reason: reason
+        const response = await fetchAPI('/users/reject', {
+          method: 'POST',
+          body: JSON.stringify({ user_id: userId, reason })
         });
-        console.log('✅ User rejected:', response.data);
-        return response.data;
+        console.log('✅ User rejected:', response);
+        return response;
       } catch (error) {
         console.error('❌ Failed to reject user:', error);
         throw error;
@@ -117,17 +198,20 @@ export const adminAPI = {
     
     createUser: async (userData, userType = 'seller') => {
       try {
-        let response;
+        let endpoint;
         if (userType === 'seller') {
-          response = await api.post('/admin/sellers', userData);
+          endpoint = '/sellers/create';
         } else if (userType === 'customer') {
-          response = await api.post('/admin/customers', userData);
-        } else if (userType === 'admin') {
-          response = await api.post('/admin/users', userData);
+          endpoint = '/auth/register';
         } else {
           throw new Error('Invalid user type');
         }
-        return response.data;
+        
+        const response = await fetchAPI(endpoint, {
+          method: 'POST',
+          body: JSON.stringify(userData)
+        });
+        return response;
       } catch (error) {
         console.error('Failed to create user:', error);
         throw error;
@@ -136,20 +220,23 @@ export const adminAPI = {
     
     updateUser: async (userId, userData, userType = 'seller') => {
       try {
-        let response;
+        let endpoint;
 
         // Standardize endpoint per user type
         if (userType === 'seller') {
-          response = await api.put(`/admin/sellers/${userId}`, userData);
+          endpoint = `/sellers/${userId}`;
         } else if (userType === 'customer') {
-          response = await api.put(`/admin/customers/${userId}`, userData);
-        } else if (userType === 'admin') {
-          response = await api.put(`/admin/users/${userId}`, userData);
+          endpoint = `/users/${userId}`;
         } else {
           throw new Error('Invalid user type for status update');
         }
 
-        return response.data;
+        const response = await fetchAPI(endpoint, {
+          method: 'PUT',
+          body: JSON.stringify(userData)
+        });
+
+        return response;
       } catch (error) {
         console.error('Failed to update user status:', error);
         throw error;
@@ -161,51 +248,52 @@ export const adminAPI = {
     getDashboardStats: async () => {
       try {
         // Get counts from different endpoints since there's no dedicated dashboard endpoint
-        const [sellersResponse, customersResponse, productsResponse, ordersResponse] = await Promise.all([
-          api.get('/admin/sellers'),
-          api.get('/admin/customers'),
-          api.get('/admin/products'),
-          api.get('/admin/orders')
+        const [sellersResponse, customersResponse, productsResponse] = await Promise.all([
+          fetchAPI('/sellers'),
+          fetchAPI('/users'),
+          fetchAPI('/products/admin')
         ]);
 
-        // Calculate total revenue
-        const totalRevenue = ordersResponse.data.reduce((sum, order) => sum + (order.price || 0), 0);
+        // Extract sellers and customers arrays
+        const sellers = sellersResponse.data?.sellers || sellersResponse.sellers || [];
+        const customers = customersResponse.data?.users || customersResponse.users || [];
+        const products = productsResponse.data?.products || productsResponse.products || [];
 
         const data = {
           stats: {
             sellers: {
-              pending_sellers: sellersResponse.data.filter(seller => seller.status === 'pending').length || 0,
-              approved_sellers: sellersResponse.data.filter(seller => seller.status === 'approved').length || 0,
-              rejected_sellers: sellersResponse.data.filter(seller => seller.status === 'rejected').length || 0,
-              total_seller_applications: sellersResponse.data.length || 0
+              pending_sellers: sellers.filter(seller => seller.verification_status === 'pending').length || 0,
+              approved_sellers: sellers.filter(seller => seller.verification_status === 'verified').length || 0,
+              rejected_sellers: sellers.filter(seller => seller.verification_status === 'rejected').length || 0,
+              total_seller_applications: sellers.length || 0
             },
             users: {
-              total_customers: customersResponse.data.length || 0,
-              active_sellers: sellersResponse.data.filter(seller => seller.status === 'approved').length || 0,
+              total_customers: customers.length || 0,
+              active_sellers: sellers.filter(seller => seller.verification_status === 'verified').length || 0,
               total_admins: 1, // We have one admin
-              total_users: customersResponse.data.length + sellersResponse.data.length + 1
+              total_users: customers.length + sellers.length + 1
             },
             products: {
-              active_products: productsResponse.data.filter(product => product.status === 'approved').length || 0,
-              inactive_products: productsResponse.data.filter(product => product.status !== 'approved').length || 0,
-              total_products: productsResponse.data.length || 0
+              active_products: products.filter(product => product.status === 'published').length || 0,
+              inactive_products: products.filter(product => product.status !== 'published').length || 0,
+              total_products: products.length || 0
             },
             orders: {
-              pending_orders: ordersResponse.data.filter(order => order.status === 'pending').length || 0,
-              completed_orders: ordersResponse.data.filter(order => order.status === 'delivered').length || 0,
-              total_orders: ordersResponse.data.length || 0,
-              total_revenue: totalRevenue || 0
+              pending_orders: 0,
+              completed_orders: 0,
+              total_orders: 0,
+              total_revenue: 0
             }
           },
-          recentApplications: sellersResponse.data
-            .filter(seller => seller.status === 'pending')
+          recentApplications: sellers
+            .filter(seller => seller.verification_status === 'pending')
             .map(seller => ({
               id: seller.id,
-              applicantName: `${seller.firstName} ${seller.lastName}`,
-              businessType: seller.businessType,
-              businessName: seller.businessName,
-              appliedAt: seller.createdAt,
-              status: seller.status
+              applicantName: seller.owner_name || 'N/A',
+              businessType: seller.business_type || 'N/A',
+              businessName: seller.business_name || 'N/A',
+              appliedAt: seller.created_at,
+              status: seller.verification_status
             }))
         };
 
@@ -217,100 +305,26 @@ export const adminAPI = {
     }
   },
 
-  products: {
-    getAllProducts: async (params = {}) => {
-      try {
-        const response = await api.get('/admin/products', { params });
-        return response.data;
-      } catch (error) {
-        console.error('Failed to fetch products:', error);
-        throw error;
-      }
-    },
-
-    deleteProduct: async (productId) => {
-      try {
-        const response = await api.delete(`/admin/products/${productId}`);
-        return response.data;
-      } catch (error) {
-        console.error('Failed to delete product:', error);
-        throw error;
-      }
-    }
-  },
-
-  categories: {
-    getAllCategories: async () => {
-      try {
-        const response = await api.get('/admin/product-categories');
-        return response.data;
-      } catch (error) {
-        console.error('Failed to fetch categories:', error);
-        throw error;
-      }
-    },
-
-    createCategory: async (categoryData) => {
-      try {
-        const response = await api.post('/admin/product-categories', categoryData);
-        return response.data;
-      } catch (error) {
-        console.error('Failed to create category:', error);
-        throw error;
-      }
-    },
-
-    updateCategory: async (categoryId, categoryData) => {
-      try {
-        const response = await api.put(`/admin/product-categories/${categoryId}`, categoryData);
-        return response.data;
-      } catch (error) {
-        console.error('Failed to update category:', error);
-        throw error;
-      }
-    },
-
-    deleteCategory: async (categoryId) => {
-      try {
-        const response = await api.delete(`/admin/product-categories/${categoryId}`);
-        return response.data;
-      } catch (error) {
-        console.error('Failed to delete category:', error);
-        throw error;
-      }
-    }
-  },
-
-  orders: {
-    getAllOrders: async (params = {}) => {
-      try {
-        const response = await api.get('/admin/orders', { params });
-        return response.data;
-      } catch (error) {
-        console.error('Failed to fetch orders:', error);
-        throw error;
-      }
-    },
-
-    updateOrderStatus: async (orderId, statusData) => {
-      try {
-        const response = await api.put(`/admin/orders/${orderId}`, statusData);
-        return response.data;
-      } catch (error) {
-        console.error('Failed to update order status:', error);
-        throw error;
-      }
-    }
-  },
-
   // Products management (for Admin Products Page)
   products: {
     getAll: async (params = {}) => {
       try {
         console.log('📡 Fetching products with params:', params);
-        const response = await api.get('/api/products/admin', { params });
-        console.log('✅ Products response:', response.data);
-        return response.data;
+        
+        // Build query string
+        const queryParams = new URLSearchParams();
+        if (params.status !== undefined && params.status !== null) {
+          queryParams.append('status', params.status);
+        }
+        if (params.page) queryParams.append('page', params.page);
+        if (params.limit) queryParams.append('limit', params.limit);
+        
+        const queryString = queryParams.toString();
+        const endpoint = `/products/admin${queryString ? `?${queryString}` : ''}`;
+        
+        const response = await fetchAPI(endpoint);
+        console.log('✅ Products response:', response);
+        return response;
       } catch (error) {
         console.error('❌ Failed to fetch products:', error);
         throw error;
@@ -319,9 +333,12 @@ export const adminAPI = {
 
     approve: async (productId) => {
       try {
-        const response = await api.post('/api/products/approve', { product_id: productId });
-        console.log('✅ Product approved:', response.data);
-        return response.data;
+        const response = await fetchAPI('/products/approve', {
+          method: 'POST',
+          body: JSON.stringify({ product_id: productId })
+        });
+        console.log('✅ Product approved:', response);
+        return response;
       } catch (error) {
         console.error('❌ Failed to approve product:', error);
         throw error;
@@ -330,12 +347,12 @@ export const adminAPI = {
 
     reject: async (productId, reason = null) => {
       try {
-        const response = await api.post('/api/products/reject', {
-          product_id: productId,
-          reason: reason
+        const response = await fetchAPI('/products/reject', {
+          method: 'POST',
+          body: JSON.stringify({ product_id: productId, reason })
         });
-        console.log('✅ Product rejected:', response.data);
-        return response.data;
+        console.log('✅ Product rejected:', response);
+        return response;
       } catch (error) {
         console.error('❌ Failed to reject product:', error);
         throw error;
