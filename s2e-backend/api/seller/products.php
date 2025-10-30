@@ -38,12 +38,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     Response::error('Method not allowed', 405);
 }
 
-// TEMPORARY: Disable auth for testing
-// TODO: Re-enable authentication after fixing the issue
-$sellerId = 10; // Hardcoded seller ID for testing
-error_log("⚠️ WARNING: Authentication temporarily disabled! Using hardcoded seller ID: $sellerId");
-
-/* 
 // Authenticate seller
 try {
     $auth = new Auth();
@@ -64,7 +58,6 @@ try {
     error_log("❌ Stack trace: " . $e->getTraceAsString());
     Response::serverError('Authentication error: ' . $e->getMessage());
 }
-*/
 
 // Get query parameters
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;

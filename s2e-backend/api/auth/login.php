@@ -42,6 +42,18 @@ $db = $database->getConnection();
 // Determine table based on user type
 $table = $userType . 's'; // users, sellers, or admins
 
+// For user login, check if email exists in sellers table first
+if ($userType === 'user') {
+    $checkSellerQuery = "SELECT id FROM sellers WHERE email = :email LIMIT 1";
+    $checkSellerStmt = $db->prepare($checkSellerQuery);
+    $checkSellerStmt->bindParam(':email', $email);
+    $checkSellerStmt->execute();
+    
+    if ($checkSellerStmt->fetch()) {
+        Response::error('This email is registered as a seller. Please use the seller login page.', 403);
+    }
+}
+
 // Query user
 $query = "SELECT * FROM {$table} WHERE email = :email LIMIT 1";
 $stmt = $db->prepare($query);

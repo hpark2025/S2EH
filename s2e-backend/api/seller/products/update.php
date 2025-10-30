@@ -31,11 +31,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'PUT') {
     Response::error('Method not allowed', 405);
 }
 
-// TEMPORARY: Disable auth for testing
-$user = ['id' => 10, 'user_type' => 'seller'];
-error_log("⚠️ WARNING: Authentication temporarily disabled in update.php!");
-
-/* 
 // Authenticate seller
 $auth = new Auth();
 $user = $auth->getCurrentUser();
@@ -43,7 +38,8 @@ $user = $auth->getCurrentUser();
 if (!$user || $user['user_type'] !== 'seller') {
     Response::unauthorized('Seller access required');
 }
-*/
+
+error_log("✅ Seller update endpoint - Seller ID: " . $user['id']);
 
 // Get product ID from URL
 $urlParts = explode('/', trim($_SERVER['REQUEST_URI'], '/'));

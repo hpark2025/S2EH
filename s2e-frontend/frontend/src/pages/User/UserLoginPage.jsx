@@ -55,6 +55,14 @@ export default function UserLoginPage() {
 
       const response = await authAPI.customerLogin(loginData)
 
+      console.log('🔍 Full login response:', response)
+
+      // Check if login was successful
+      if (!response.success && response.message) {
+        // Backend returned an error message
+        throw new Error(response.message)
+      }
+
       // PHP backend returns: { success, message, data: { user, token, expires_at, user_type } }
       if (response.data?.token || response.token || response.access_token) {
         const token = response.data?.token || response.token || response.access_token;
@@ -111,7 +119,19 @@ export default function UserLoginPage() {
 
     } catch (error) {
       console.error('Customer login error:', error)
-      setError(`Login failed: ${error.response?.data?.message || error.message}`)
+      
+      // Check if it's a seller trying to log in
+      const errorMessage = error.response?.data?.message || error.message
+      
+      if (errorMessage.includes('seller')) {
+        setError('⚠️ This email is registered as a seller. Please use the seller login page at /seller/login')
+      } else if (errorMessage.includes('pending approval')) {
+        setError('⏳ Your account is pending admin approval. Please wait for verification.')
+      } else if (errorMessage.includes('Invalid email or password')) {
+        setError('❌ Invalid email or password. Please check your credentials.')
+      } else {
+        setError(`❌ Login failed: ${errorMessage}`)
+      }
     } finally {
       setIsLoading(false)
     }
