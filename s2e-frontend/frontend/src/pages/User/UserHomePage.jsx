@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "react-hot-toast"
-import { productsAPI } from "../../services/authAPI"
-import api from "../../services/api"
 import UserFooter from "../../components/partials/UserFooter.jsx"
 import { useCart } from "../../hooks/useCart"
 
@@ -20,27 +18,40 @@ export default function UserHomePage() {
   const loadFeaturedProducts = async () => {
     try {
       setLoading(true)
-      console.log('🔍 Loading featured products from PHP backend...')
+      console.log('🔍 Loading featured products from PHP backend using Vite proxy...')
+      console.log('🔍 Fetching products with status=published')
       
-      const response = await productsAPI.getProducts({ limit: 8 })
-      console.log('✅ Products response:', response)
-      console.log('✅ Products array:', response.products)
+      // Use Vite proxy to avoid CORS issues
+      const apiUrl = '/api/products?limit=100'
+      console.log('🔍 API URL (via Vite proxy):', apiUrl)
       
-      if (response.products && Array.isArray(response.products)) {
-        setFeaturedProducts(response.products)
-        console.log('🔍 Set products:', response.products.length)
-      } else {
-        console.log('🔍 No products array found in response')
-        setFeaturedProducts([])
-      }
-    } catch (error) {
-      console.error('🔍 Failed to load products:', error)
-      console.error('🔍 Error details:', {
-        status: error.response?.status,
-        data: error.response?.data,
-        message: error.message
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
       })
-      toast.error(`Failed to load products: ${error.response?.data?.message || error.message}`)
+      
+      console.log('✅ Response status:', response.status)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      console.log('✅ Response data:', data)
+      
+      // Backend returns { success: true, data: { products: [...], pagination: {...} } }
+      const products = data.data?.products || data.products || []
+      console.log('✅ Products array:', products)
+      console.log('✅ Products count:', products.length)
+      console.log('✅ Products status:', products.map(p => ({ id: p.id, title: p.title, status: p.status })))
+      
+      setFeaturedProducts(products)
+    } catch (error) {
+      console.error('❌ Failed to load products:', error)
+      console.error('❌ Error details:', error.message)
+      toast.error(`Failed to load products: ${error.message}`)
       setFeaturedProducts([])
     } finally {
       setLoading(false)

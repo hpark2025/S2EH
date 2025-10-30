@@ -5,16 +5,18 @@
  */
 
 // Allow from any origin (for development)
-// Support both port 5173 and 5174
-$origin = $_SERVER['HTTP_ORIGIN'] ?? 'http://localhost:5173';
-if (in_array($origin, ['http://localhost:5173', 'http://localhost:5174'])) {
-    header("Access-Control-Allow-Origin: $origin");
-} else {
-    header("Access-Control-Allow-Origin: http://localhost:5174");
-}
+// Support both port 5173, 5174, and 5175
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$allowedOrigins = ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'];
 
-// Allow credentials (cookies, authorization headers)
-header("Access-Control-Allow-Credentials: true");
+if (in_array($origin, $allowedOrigins)) {
+    header("Access-Control-Allow-Origin: $origin");
+    // Allow credentials only when we have a valid origin
+    header("Access-Control-Allow-Credentials: true");
+} else {
+    // For public endpoints, allow all origins without credentials
+    header("Access-Control-Allow-Origin: *");
+}
 
 // Allowed methods
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS, PATCH");
