@@ -351,7 +351,7 @@ export default function UserProductDetailsPage() {
   }
 
   return (
-    <>
+    <div>
       {/* Product Details Content */}
       <div className="container product-details-container" style={{ marginTop: '90px' }}>
         {/* Breadcrumb */}
@@ -375,25 +375,26 @@ export default function UserProductDetailsPage() {
         </nav>
 
         {/* Product Details Section */}
-        <div className="row g-4 align-items-start">
+        <div className="row g-4 align-items-start mb-5">
           {/* Left Column - Product Image */}
-          <div className="col-lg-6">
-            <div className="product-image-gallery">
+          <div className="col-lg-6 mb-4 mb-lg-0">
+            <div className="product-image-gallery card border p-3 bg-white">
               <div className="row g-3">
                 {/* Thumbnail Images */}
                 <div className="col-2">
-                  <div className="product-thumbnails">
+                  <div className="product-thumbnails d-flex flex-column gap-2">
                     {getProductImages(product).map((image, index) => (
                       <button
                         key={index}
-                        className={`product-thumbnail ${selectedImageIndex === index ? 'active' : ''}`}
+                        className={`product-thumbnail border ${selectedImageIndex === index ? 'border-primary' : 'border-light'}`}
                         onClick={() => setSelectedImageIndex(index)}
+                        style={{ padding: '2px', borderRadius: '4px' }}
                       >
                         <img
                           src={image}
                           alt={`${product.title || product.name} ${index + 1}`}
-                          className="img-fluid"
-                          style={{ height: '60px', objectFit: 'cover' }}
+                          className="img-fluid rounded"
+                          style={{ height: '60px', width: '60px', objectFit: 'cover' }}
                         />
                       </button>
                     ))}
@@ -402,14 +403,14 @@ export default function UserProductDetailsPage() {
 
                 {/* Main Product Image */}
                 <div className="col-10">
-                  <div className="product-main-image">
+                  <div className="product-main-image position-relative">
                     <img 
                       src={getProductImages(product)[selectedImageIndex] || product.thumbnail || '/images/unknown.jpg'} 
                       alt={product.title || product.name} 
-                      className="img-fluid w-100"
-                      style={{ minHeight: '400px', objectFit: 'cover' }}
+                      className="img-fluid w-100 rounded"
+                      style={{ minHeight: '400px', maxHeight: '500px', objectFit: 'contain', backgroundColor: '#ffffff' }}
                     />
-                  
+                    
                   {/* Product Badges - Top Left */}
                   <div className="position-absolute top-0 start-0 m-3">
                     <span className="badge bg-success mb-2 d-block">
@@ -451,6 +452,7 @@ export default function UserProductDetailsPage() {
                     >
                       <i className={`bi bi-heart${isWishlisted ? '-fill' : ''}`}></i>
                     </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -459,24 +461,24 @@ export default function UserProductDetailsPage() {
 
           {/* Right Column - Product Info */}
           <div className="col-lg-6">
-            <div className="product-info-card">
+            <div className="product-info-card card border p-4 mb-4 bg-white">
               {/* Product Title */}
-              <h1 className="product-title">{product.title || product.name}</h1>
+              <h1 className="product-title h4 mb-3">{product.title || product.name}</h1>
 
               {/* Price and stock quick info */}
-              <div className="product-price-section">
+              <div className="product-price-section mb-3 bg-white">
                 <div className="d-flex justify-content-between align-items-center">
                   <div>
                     <div className="d-flex align-items-center mb-2">
-                      <span className="product-price-main">₱{getProductPrice(product).toFixed(2)}</span>
+                      <span className="product-price-main fs-3 fw-bold text-dark">₱{getProductPrice(product).toFixed(2)}</span>
                       {product.originalPrice > getProductPrice(product) && (
-                        <span className="product-price-original">₱{product.originalPrice.toFixed(2)}</span>
+                        <span className="product-price-original text-decoration-line-through ms-2 text-muted fs-5">₱{product.originalPrice.toFixed(2)}</span>
                       )}
                     </div>
                     <small className="text-muted">Price includes all applicable taxes</small>
                     {product.originalPrice > getProductPrice(product) && (
                       <div className="mt-2">
-                        <span className="product-savings">
+                        <span className="product-savings badge bg-secondary">
                           Save ₱{(product.originalPrice - getProductPrice(product)).toFixed(2)}
                         </span>
                       </div>
@@ -488,8 +490,8 @@ export default function UserProductDetailsPage() {
                       return (
                         <span className={`badge ${
                           stockStatus.inStock ? 
-                            (typeof stockStatus.quantity === 'number' && stockStatus.quantity > 10 ? 'bg-success' : 'bg-warning') : 
-                            'bg-danger'
+                            (typeof stockStatus.quantity === 'number' && stockStatus.quantity > 10 ? 'bg-secondary' : 'bg-secondary') : 
+                            'bg-secondary'
                         }`}>
                           {stockStatus.inStock ? 
                             (typeof stockStatus.quantity === 'number' ? `${stockStatus.quantity} in stock` : 'In stock') : 
@@ -510,11 +512,11 @@ export default function UserProductDetailsPage() {
               </div>
 
             {/* Seller Information */}
-            <div className="seller-info-card">
+            <div className="seller-info-card card border p-3 mb-4 bg-white">
               <div className="d-flex align-items-center">
                 <div className="me-3">
-                  <div className="seller-avatar">
-                    {product.seller?.charAt(0).toUpperCase() || '?'}
+                  <div className="seller-avatar bg-light text-dark border rounded-circle d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px' }}>
+                    {(product.seller?.charAt(0) || '?').toUpperCase()}
                   </div>
                 </div>
                 <div className="flex-grow-1">
@@ -537,15 +539,17 @@ export default function UserProductDetailsPage() {
             </div>
 
             {/* Rating */}
-            <div className="d-flex align-items-center mb-3">
-              <span className="text-warning me-2">★</span>
-              <strong className="me-2">{product.avgRating ? product.avgRating.toFixed(1) : '0'}</strong>
-              <span className="text-muted me-3">({product.reviewCount || 0} reviews)</span>
-              <a href="#reviews" className="text-primary text-decoration-none">See all reviews</a>
+            <div className="card border p-3 mb-4 bg-white">
+              <div className="d-flex align-items-center">
+                <span className="text-warning me-2 fs-4">★</span>
+                <strong className="me-2 fs-5">{product.avgRating ? product.avgRating.toFixed(1) : '0'}</strong>
+                <span className="text-muted me-3">({product.reviewCount || 0} reviews)</span>
+                <a href="#reviews" className="text-primary text-decoration-none ms-auto">See all reviews</a>
+              </div>
             </div>
 
             {/* Quantity */}
-            <div className="mb-4">
+            <div className="card border p-3 mb-4 bg-white">
               <div className="mb-2"><strong>Quantity:</strong></div>
               <div className="d-flex align-items-center">
                 <div className="d-flex border rounded overflow-hidden">
@@ -576,52 +580,29 @@ export default function UserProductDetailsPage() {
             </div>
 
             {/* Action Buttons */}
-            <div className="product-action-buttons">
-              <button 
-                className="btn btn-add-cart"
-                onClick={handleAddToCart}
-                disabled={getStockStatus(product).quantity === 0}
-              >
-                <i className="bi bi-cart-plus me-2"></i>Add to Cart
-              </button>
-              <button 
-                className="btn btn-buy-now"
-                onClick={buyNow}
-                disabled={getStockStatus(product).quantity === 0}
-              >
-                <i className="bi bi-lightning me-2"></i>Buy Now
-              </button>
+            <div className="card border p-3 mb-4 bg-white">
+              <div className="d-grid gap-2">
+                <button 
+                  className="btn btn-outline-success"
+                  onClick={handleAddToCart}
+                  disabled={getStockStatus(product).quantity === 0}
+                >
+                  <i className="bi bi-cart-plus me-2"></i>Add to Cart
+                </button>
+                <button 
+                  className="btn btn-success"
+                  onClick={buyNow}
+                  disabled={getStockStatus(product).quantity === 0}
+                >
+                  <i className="bi bi-lightning me-2"></i>Buy Now
+                </button>
+              </div>
             </div>
 
-            {/* Delivery Information */}
-            <div className="shipping-info-card">
-              <div className="d-flex align-items-center mb-3">
-                <i className="bi bi-truck shipping-icon"></i>
-                <strong>Delivery Information</strong>
-              </div>
-              
-              <div className="shipping-option">
-                <div>
-                  <i className="bi bi-geo-alt shipping-icon"></i>Standard Delivery
-                  <br />
-                  <small className="text-muted">3-7 business days</small>
-                </div>
-                <span className="shipping-price">₱50 - ₱120</span>
-              </div>
-
-              <div className="shipping-option">
-                <div>
-                  <i className="bi bi-lightning shipping-icon"></i>Express Delivery
-                  <br />
-                  <small className="text-muted">1-2 business days</small>
-                </div>
-                <span className="shipping-price">₱150 - ₱250</span>
-              </div>
-
-              <hr />
-              
+            {/* Product Guarantee */}
+            <div className="card border p-3 mb-4 bg-white">
               <div className="d-flex align-items-center">
-                <i className="bi bi-shield-check text-success me-2"></i>
+                <i className="bi bi-shield-check text-success me-2 fs-4"></i>
                 <small>100% Authentic Products Guaranteed</small>
               </div>
             </div>
@@ -630,52 +611,54 @@ export default function UserProductDetailsPage() {
         </div>
 
         {/* Product Details Tabs */}
-        <div className="product-tabs mt-5">
+        <div className="product-tabs mt-5 card border p-0 bg-white">
           {/* Tab Navigation */}
-          <ul className="nav nav-tabs border-0 mb-0">
-            <li className="nav-item">
-              <button 
-                className={`nav-link ${activeTab === 'description' ? 'active' : ''}`}
-                onClick={() => setActiveTab('description')}
-                type="button"
-              >
-                <i className="bi bi-file-text me-1"></i>Description
-              </button>
-            </li>
-            <li className="nav-item">
-              <button 
-                className={`nav-link ${activeTab === 'specifications' ? 'active' : ''}`}
-                onClick={() => setActiveTab('specifications')}
-                type="button"
-              >
-                <i className="bi bi-list-ul me-1"></i>Specifications
-              </button>
-            </li>
-            <li className="nav-item">
-              <button 
-                className={`nav-link ${activeTab === 'reviews' ? 'active' : ''}`}
-                onClick={() => setActiveTab('reviews')}
-                type="button"
-              >
-                <i className="bi bi-star me-1"></i>Reviews ({product.reviewCount || 0})
-              </button>
-            </li>
-            <li className="nav-item">
-              <button 
-                className={`nav-link ${activeTab === 'shipping' ? 'active' : ''}`}
-                onClick={() => setActiveTab('shipping')}
-                type="button"
-              >
-                <i className="bi bi-truck me-1"></i>Shipping & Returns
-              </button>
-            </li>
-          </ul>
+          <div className="card-header bg-white p-0 m-0 w-100 border-bottom-0">
+            <ul className="nav nav-tabs card-header-tabs border-bottom-0 d-flex flex-nowrap overflow-auto w-100">
+              <li className="nav-item">
+                <button 
+                  className={`nav-link px-4 py-3 ${activeTab === 'description' ? 'active fw-bold' : ''}`}
+                  onClick={() => setActiveTab('description')}
+                  type="button"
+                >
+                  <i className="bi bi-file-text me-1"></i>Description
+                </button>
+              </li>
+              <li className="nav-item">
+                <button 
+                  className={`nav-link px-4 py-3 ${activeTab === 'specifications' ? 'active fw-bold' : ''}`}
+                  onClick={() => setActiveTab('specifications')}
+                  type="button"
+                >
+                  <i className="bi bi-list-ul me-1"></i>Specifications
+                </button>
+              </li>
+              <li className="nav-item">
+                <button 
+                  className={`nav-link px-4 py-3 ${activeTab === 'reviews' ? 'active fw-bold' : ''}`}
+                  onClick={() => setActiveTab('reviews')}
+                  type="button"
+                >
+                  <i className="bi bi-star me-1"></i>Reviews ({product.reviewCount || 0})
+                </button>
+              </li>
+              <li className="nav-item">
+                <button 
+                  className={`nav-link px-4 py-3 ${activeTab === 'shipping' ? 'active fw-bold' : ''}`}
+                  onClick={() => setActiveTab('shipping')}
+                  type="button"
+                >
+                  <i className="bi bi-truck me-1"></i>Shipping & Returns
+                </button>
+              </li>
+            </ul>
+          </div>
 
           {/* Tab Content */}
-          <div className="tab-content">
+          <div className="card-body p-4 w-100">
             {/* Description Tab */}
             {activeTab === 'description' && (
-              <div className="tab-pane-content">
+              <div className="tab-content">
                 <h5>Product Description</h5>
                 <div className="mt-3">
                   <p>{product.description || 'No description available for this product.'}</p>
@@ -694,7 +677,7 @@ export default function UserProductDetailsPage() {
 
             {/* Specifications Tab */}
             {activeTab === 'specifications' && (
-              <div className="tab-pane-content">
+              <div className="tab-content">
                 <h5>Product Specifications</h5>
                 <div className="table-responsive mt-3">
                   <table className="table table-striped">
@@ -731,7 +714,7 @@ export default function UserProductDetailsPage() {
 
             {/* Reviews Tab */}
             {activeTab === 'reviews' && (
-              <div className="tab-pane-content">
+              <div className="tab-content">
                 <div className="d-flex justify-content-between align-items-center mb-4">
                   <h5>Customer Reviews</h5>
                   <button 
@@ -749,19 +732,12 @@ export default function UserProductDetailsPage() {
                     <div className="mb-2">{renderStars(product.avgRating || 0)}</div>
                     <small className="text-muted">Based on {product.reviewCount || 0} reviews</small>
                   </div>
-                  <div className="col-md-8">
-                    {[5, 4, 3, 2, 1].map(rating => (
-                      <div key={rating} className="d-flex align-items-center mb-2">
-                        <small className="me-2">{rating}★</small>
-                        <div className="progress flex-grow-1 me-2" style={{ height: '8px' }}>
-                          <div 
-                            className="progress-bar bg-warning" 
-                            style={{ width: `${Math.random() * 100}%` }}
-                          ></div>
-                        </div>
-                        <small className="text-muted">({Math.floor(Math.random() * 10)})</small>
-                      </div>
-                    ))}
+                  <div className="col-md-8 d-flex align-items-center justify-content-center">
+                    <div className="text-center">
+                      <i className="bi bi-star-fill text-warning mb-3" style={{ fontSize: '2rem' }}></i>
+                      <p className="mb-0">No rating breakdown available yet</p>
+                      <small className="text-muted">Ratings will appear as customers review this product</small>
+                    </div>
                   </div>
                 </div>
 
@@ -798,7 +774,7 @@ export default function UserProductDetailsPage() {
 
             {/* Shipping Tab */}
             {activeTab === 'shipping' && (
-              <div className="tab-pane-content">
+              <div className="tab-content">
                 <h5>Shipping & Returns</h5>
                 <div className="row mt-3">
                   <div className="col-md-6">
@@ -823,7 +799,6 @@ export default function UserProductDetailsPage() {
               </div>
             )}
           </div>
-        </div>
         </div>
 
       </div>
@@ -892,7 +867,6 @@ export default function UserProductDetailsPage() {
       )}
 
       <UserFooter />
-    </>
+    </div>
   )
 }
-

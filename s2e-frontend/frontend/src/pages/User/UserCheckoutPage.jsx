@@ -200,9 +200,9 @@ export default function UserCheckoutPage() {
 
   // Calculations
   const subtotal = cartItems.reduce((total, item) => total + (parseFloat(item.price) * item.quantity), 0)
-  const deliveryFee = subtotal > 2000 ? 0 : 50 // Free shipping over ₱2000
+  const deliveryFee = 0 // No delivery fee
   const serviceFee = 0 // No service fee for now
-  const total = subtotal + deliveryFee + serviceFee
+  const total = subtotal + serviceFee
 
   const handleAddressChange = (addressId) => {
     setSelectedAddress(addressId)
@@ -508,12 +508,6 @@ export default function UserCheckoutPage() {
                 <div className="d-flex justify-content-between mb-2">
                   <span>Subtotal ({cartItems.length} items)</span>
                   <span>₱{subtotal.toFixed(2)}</span>
-                </div>
-                <div className="d-flex justify-content-between mb-2">
-                  <span>Delivery Fee</span>
-                  <span className={deliveryFee === 0 ? 'text-success' : ''}>
-                    {deliveryFee === 0 ? 'FREE' : `₱${deliveryFee.toFixed(2)}`}
-                  </span>
                 </div>
                 {serviceFee > 0 && (
                   <div className="d-flex justify-content-between mb-2">

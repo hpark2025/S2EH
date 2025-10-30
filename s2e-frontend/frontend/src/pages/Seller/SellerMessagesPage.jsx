@@ -443,7 +443,7 @@ export default function SellerMessagesPage() {
           border-bottom: 1px solid #e0e0e0;
           display: flex;
           align-items: center;
-          justify-content: between;
+          justify-content: space-between;
           gap: 1rem;
           background: #f8f9fa;
         }

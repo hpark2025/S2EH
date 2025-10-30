@@ -69,15 +69,12 @@ export default function UserCartPage() {
     return total + (price * item.quantity)
   }, 0)
   
-  // Shipping calculation: Free shipping for orders above ₱2,000
-  const shippingFee = subtotal >= 2000 ? 0 : 120
-  
   // Discount calculation: 10% discount for orders above ₱500
   const discountRate = subtotal >= 500 ? 0.10 : 0
   const discount = subtotal * discountRate
-  
-  // Total calculation
-  const total = subtotal + shippingFee - discount
+
+  // Total calculation (shipping removed)
+  const total = subtotal - discount
 
   // Quantity handlers
   const updateQuantity = (id, newQuantity) => {
@@ -311,12 +308,7 @@ export default function UserCartPage() {
                         <span>Subtotal:</span>
                         <span className="fw-bold">₱{subtotal.toFixed(2)}</span>
                       </div>
-                      <div className="d-flex justify-content-between mb-2">
-                        <span>Shipping:</span>
-                        <span className={`fw-bold ${shippingFee === 0 ? 'text-success' : ''}`}>
-                          {shippingFee === 0 ? 'FREE' : `₱${shippingFee.toFixed(2)}`}
-                        </span>
-                      </div>
+                      {/* Shipping removed from summary */}
                       <div className="d-flex justify-content-between mb-3">
                         <span>Discount {discount > 0 && `(${(discountRate * 100).toFixed(0)}%)`}:</span>
                         <span className="fw-bold text-danger">
@@ -352,26 +344,7 @@ export default function UserCartPage() {
                     </div>
                   </div>
 
-                  {/* Shipping Information Card */}
-                  <div className="card shadow-sm">
-                    <div className="card-header bg-light">
-                      <h5 className="mb-0">Shipping Information</h5>
-                    </div>
-                    <div className="card-body">
-                      <p className="mb-2">
-                        <i className="bi bi-truck me-2 text-primary"></i> 
-                        <strong>Standard Delivery:</strong> 3-5 business days
-                      </p>
-                      <p className="mb-2">
-                        <i className="bi bi-gift me-2 text-success"></i> 
-                        <strong>Free Shipping:</strong> Orders above ₱2,000
-                      </p>
-                      <p className="mb-0">
-                        <i className="bi bi-percent me-2 text-danger"></i> 
-                        <strong>Discount:</strong> 10% off on orders above ₱500
-                      </p>
-                    </div>
-                  </div>
+                  {/* Shipping information removed from cart page */}
                 </div>
               </div>
             </div>
