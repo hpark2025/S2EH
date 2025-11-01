@@ -2,9 +2,10 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { useAppState } from '../context/AppContext.jsx'
 import { useCustomerAutoLogout } from '../hooks/useAutoLogout.js'
 import { useCart } from '../hooks/useCart.js'
+import { cookieAuth } from '../utils/cookieAuth.js'
 
 function Header() {
-  const { state } = useAppState()
+  const { state, logout: contextLogout } = useAppState()
   const { isLoggedIn } = state
   const { cartCount } = useCart()
   const { logout } = useCustomerAutoLogout(() => {
@@ -12,9 +13,31 @@ function Header() {
   })
 
   const handleLogout = () => {
-    // Clear cart on logout
-    localStorage.removeItem('cart')
-    logout()
+    // Clear localStorage
+    localStorage.removeItem('isLoggedIn')
+    localStorage.removeItem('user')
+    localStorage.removeItem('userType')
+    localStorage.removeItem('accessToken')
+    localStorage.removeItem('refreshToken')
+    localStorage.removeItem('token')
+    localStorage.removeItem('sellerToken')
+    localStorage.removeItem('adminToken')
+    localStorage.removeItem('cart') // Clear cart on logout
+    
+    // Clear cookies
+    cookieAuth.clearAuth()
+    
+    // Clear cookies manually (backup)
+    document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+    document.cookie = 'isLoggedIn=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+    document.cookie = 'userType=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+    document.cookie = 'user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+    
+    // Update app context
+    contextLogout()
+    
+    // Redirect to home page
+    window.location.href = '/home'
   }
 
   return (

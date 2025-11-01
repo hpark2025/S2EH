@@ -3,15 +3,25 @@ import PropTypes from 'prop-types'
 
 export default function AvatarUploadModal({ show, onClose, onUpload, currentAvatar }) {
   const [avatarPreview, setAvatarPreview] = useState(currentAvatar)
+  const [selectedFile, setSelectedFile] = useState(null)
 
   const handleAvatarChange = (e) => {
     const file = e.target.files[0]
     if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file')
+        return
+      }
+      
       if (file.size > 5 * 1024 * 1024) { // 5MB limit
         alert('File size must be less than 5MB')
         return
       }
       
+      setSelectedFile(file)
+      
+      // Create preview
       const reader = new FileReader()
       reader.onload = (event) => {
         setAvatarPreview(event.target.result)
@@ -21,12 +31,16 @@ export default function AvatarUploadModal({ show, onClose, onUpload, currentAvat
   }
 
   const handleUpload = () => {
-    onUpload(avatarPreview)
-    onClose()
+    if (selectedFile) {
+      onUpload(selectedFile, avatarPreview)
+    } else {
+      onUpload(null, avatarPreview)
+    }
   }
 
   const handleClose = () => {
     setAvatarPreview(currentAvatar)
+    setSelectedFile(null)
     onClose()
   }
 

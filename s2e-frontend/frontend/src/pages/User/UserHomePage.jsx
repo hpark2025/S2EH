@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { toast } from "react-hot-toast"
 import UserFooter from "../../components/partials/UserFooter.jsx"
 import { useCart } from "../../hooks/useCart"
+import { userCartAPI } from "../../services/userCartAPI"
 
 export default function UserHomePage() {
   const navigate = useNavigate()
@@ -133,15 +134,25 @@ export default function UserHomePage() {
     return { quantity: 0, manage_inventory: false };
   }
 
-  const handleAddToCart = (product) => {
-    const success = addToCart(product, 1)
-    if (success) {
-      toast.success(`${product.title} added to basket!`, {
-        duration: 2000,
-        icon: '🛒'
-      })
-    } else {
-      toast.error('Failed to add to basket')
+  const handleAddToCart = async (product) => {
+    try {
+      console.log('🛒 Adding product to cart:', product);
+      
+      // Add to database cart
+      await userCartAPI.addToCart(product.id, 1);
+      
+      // Also update localStorage cart for immediate UI feedback
+      const success = addToCart(product, 1);
+      
+      if (success) {
+        toast.success(`${product.title} added to basket!`, {
+          duration: 2000,
+          icon: '🛒'
+        });
+      }
+    } catch (error) {
+      console.error('❌ Failed to add to cart:', error);
+      toast.error(error.message || 'Failed to add to basket. Please make sure you are logged in.');
     }
   }
 

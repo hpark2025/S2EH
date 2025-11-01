@@ -38,6 +38,20 @@ RewriteRule ^api/geocoding/coordinates/?$ api/geocoding/coordinates.php [L,QSA]
 RewriteRule ^api/orders$ api/orders/index.php [L]
 RewriteRule ^api/orders/create$ api/orders/create.php [L]
 
+# Cart routes
+RewriteCond %{REQUEST_METHOD} PUT [OR]
+RewriteCond %{REQUEST_METHOD} PATCH
+RewriteRule ^api/cart/items/([0-9]+)/?$ api/cart/items/update.php?id=$1 [L,QSA]
+RewriteCond %{REQUEST_METHOD} DELETE
+RewriteRule ^api/cart/items/([0-9]+)/?$ api/cart/items/delete.php?id=$1 [L,QSA]
+RewriteRule ^api/cart/?$ api/cart/index.php [L,QSA]
+
+# Addresses routes
+RewriteCond %{REQUEST_METHOD} PUT [OR]
+RewriteCond %{REQUEST_METHOD} PATCH
+RewriteRule ^api/addresses/([0-9]+)/?$ api/addresses/update.php?id=$1 [L,QSA]
+RewriteRule ^api/addresses/?$ api/addresses/index.php [L,QSA]
+
 # Sellers routes (Admin)
 RewriteRule ^api/sellers/test/?$ api/sellers/test.php [L,QSA]
 RewriteRule ^api/sellers/create/?$ api/sellers/create.php [L,QSA]
@@ -46,6 +60,11 @@ RewriteRule ^api/sellers/reject/?$ api/sellers/reject.php [L,QSA]
 RewriteRule ^api/sellers/?$ api/sellers/index.php [L,QSA]
 
 # Users routes (Admin)
+RewriteRule ^api/users/avatar/?$ api/users/upload-avatar.php [L,QSA]
+RewriteCond %{REQUEST_METHOD} PUT [OR]
+RewriteCond %{REQUEST_METHOD} PATCH
+RewriteRule ^api/users/password/?$ api/users/update-password.php [L,QSA]
+RewriteRule ^api/users/profile/?$ api/users/update-profile.php [L,QSA]
 RewriteRule ^api/users/approve/?$ api/users/approve.php [L,QSA]
 RewriteRule ^api/users/reject/?$ api/users/reject.php [L,QSA]
 RewriteRule ^api/users/([0-9]+)/addresses/?$ api/users/addresses.php [L,QSA]

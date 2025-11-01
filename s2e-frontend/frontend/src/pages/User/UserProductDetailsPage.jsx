@@ -5,6 +5,8 @@ import UserConditionalCategoryLink from '../../components/partials/UserCondition
 import UserFooter from '../../components/partials/UserFooter.jsx'
 import { ProductImageModal, ProductReviewModal } from '../../components/UserModals'
 import { productsAPI } from '../../services/authAPI.js'
+import { userCartAPI } from '../../services/userCartAPI.js'
+import { useCart } from '../../hooks/useCart.js'
 import { toast } from 'react-hot-toast'
 
 export default function UserProductDetailsPage() {
@@ -12,6 +14,7 @@ export default function UserProductDetailsPage() {
   const navigate = useNavigate()
   const { state } = useAppState()
   const { isLoggedIn } = state
+  const { addToCart } = useCart()
   const [activeTab, setActiveTab] = useState('description')
   const [showImageModal, setShowImageModal] = useState(false)
   const [showReviewModal, setShowReviewModal] = useState(false)
@@ -223,43 +226,35 @@ export default function UserProductDetailsPage() {
 
     try {
       console.log('🛒 Adding product to cart:', product)
-      
-      // PHP Backend: Use product.id directly (no variants)
-      const productImage = getProductImages(product)[0];
-      const cartItem = {
-        product_id: product.id,
+      console.log('🛒 Quantity:', quantity)
+
+      // Add to database cart
+      await userCartAPI.addToCart(product.id, quantity)
+
+      // Also update localStorage cart for immediate UI feedback
+      const productImage = getProductImages(product)[0]
+      const cartProduct = {
+        id: product.id,
         title: product.title,
         price: parseFloat(product.price),
-        quantity: quantity,
-        image: productImage,
-        stock_quantity: product.stock_quantity
+        thumbnail: productImage,
+        images: product.images || [productImage],
+        sku: product.sku,
+        seller_name: product.seller,
+        quantity: quantity
       }
-      
-      console.log('🛒 Cart item:', cartItem)
-      
-      // Get existing cart from localStorage
-      const existingCart = JSON.parse(localStorage.getItem('cart') || '[]')
-      
-      // Check if product already in cart
-      const existingItemIndex = existingCart.findIndex(item => item.product_id === product.id)
-      
-      if (existingItemIndex > -1) {
-        // Increase quantity
-        existingCart[existingItemIndex].quantity += quantity
-        toast.success(`Updated ${product.title} quantity in cart!`)
-      } else {
-        // Add new item
-        existingCart.push(cartItem)
-        toast.success(`${product.title} added to cart!`)
+
+      const success = addToCart(cartProduct, quantity)
+
+      if (success) {
+        toast.success(`${product.title} added to basket!`, {
+          duration: 2000,
+          icon: '🛒'
+        })
       }
-      
-      // Save to localStorage
-      localStorage.setItem('cart', JSON.stringify(existingCart))
-      
-      console.log('✅ Cart updated:', existingCart)
     } catch (error) {
       console.error('❌ Failed to add to cart:', error)
-      toast.error('Failed to add to cart. Please try again.')
+      toast.error(error.message || 'Failed to add to basket. Please make sure you are logged in.')
     }
   }
 
@@ -549,35 +544,77 @@ export default function UserProductDetailsPage() {
             </div>
 
             {/* Quantity */}
-            <div className="card border p-3 mb-4 bg-white">
-              <div className="mb-2"><strong>Quantity:</strong></div>
-              <div className="d-flex align-items-center">
-                <div className="d-flex border rounded overflow-hidden">
-                  <button 
-                    className="btn btn-sm btn-outline-secondary px-3"
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  >
-                    -
-                  </button>
-                  <input 
-                    type="number" 
-                    className="form-control border-0 text-center"
-                    value={quantity} 
-                    min="1" 
-                    max={product.stock}
-                    onChange={(e) => setQuantity(Math.max(1, Math.min(product.stock, parseInt(e.target.value) || 1)))}
-                    style={{ width: '60px' }} 
-                  />
-                  <button 
-                    className="btn btn-sm btn-outline-secondary px-3"
-                    onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
-                  >
-                    +
-                  </button>
+            {product && (
+              <div className="card border p-3 mb-4 bg-white">
+                <div className="mb-2"><strong>Quantity:</strong></div>
+                <div className="d-flex align-items-center">
+                  <div className="d-flex border rounded overflow-hidden">
+                    <button 
+                      className="btn btn-sm btn-outline-secondary px-3"
+                      onClick={() => {
+                        if (quantity > 1) {
+                          setQuantity(quantity - 1)
+                        }
+                      }}
+                      disabled={quantity <= 1}
+                    >
+                      -
+                    </button>
+                    <input 
+                      type="number" 
+                      className="form-control border-0 text-center"
+                      value={quantity} 
+                      min="1" 
+                      max={(() => {
+                        if (!product) return 1
+                        const stockStatus = getStockStatus(product)
+                        return stockStatus.quantity === 'Unlimited' ? undefined : (stockStatus.quantity || 1)
+                      })()}
+                      onChange={(e) => {
+                        if (!product) return
+                        const stockStatus = getStockStatus(product)
+                        const maxQty = stockStatus.quantity === 'Unlimited' ? undefined : (stockStatus.quantity || 1)
+                        const inputValue = parseInt(e.target.value) || 1
+                        const newQty = maxQty ? Math.max(1, Math.min(maxQty, inputValue)) : Math.max(1, inputValue)
+                        setQuantity(newQty)
+                      }}
+                      style={{ width: '60px' }} 
+                    />
+                    <button 
+                      className="btn btn-sm btn-outline-secondary px-3"
+                      onClick={() => {
+                        if (!product) return
+                        const stockStatus = getStockStatus(product)
+                        const maxQty = stockStatus.quantity === 'Unlimited' ? undefined : (stockStatus.quantity || 1)
+                        if (maxQty) {
+                          const newQty = Math.min(maxQty, quantity + 1)
+                          setQuantity(newQty)
+                        } else {
+                          setQuantity(quantity + 1)
+                        }
+                      }}
+                      disabled={(() => {
+                        if (!product) return true
+                        const stockStatus = getStockStatus(product)
+                        if (stockStatus.quantity === 'Unlimited') return false
+                        return quantity >= (stockStatus.quantity || 0)
+                      })()}
+                    >
+                      +
+                    </button>
+                  </div>
+                  <span className="text-muted ms-3">
+                    {(() => {
+                      if (!product) return 'Loading...'
+                      const stockStatus = getStockStatus(product)
+                      return stockStatus.quantity === 'Unlimited' 
+                        ? 'Unlimited pieces available' 
+                        : `${stockStatus.quantity || 0} pieces available`
+                    })()}
+                  </span>
                 </div>
-                <span className="text-muted ms-3">{product.stock} pieces available</span>
               </div>
-            </div>
+            )}
 
             {/* Action Buttons */}
             <div className="card border p-3 mb-4 bg-white">
@@ -804,12 +841,14 @@ export default function UserProductDetailsPage() {
       </div>
 
       {/* Product Modals */}
-      <ProductImageModal
-        show={showImageModal}
-        onClose={() => setShowImageModal(false)}
-        images={[product.image || '/images/unknown.jpg']}
-        activeIndex={0}
-      />
+      {product && (
+        <ProductImageModal
+          show={showImageModal}
+          onClose={() => setShowImageModal(false)}
+          images={getProductImages(product)}
+          activeIndex={selectedImageIndex}
+        />
+      )}
 
       <ProductReviewModal
         show={showReviewModal}

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAppState } from '../../context/AppContext.jsx'
+import { toast } from 'react-hot-toast'
 
 export default function UserAccountSecurityPage() {
   const { state } = useAppState()
@@ -65,7 +66,7 @@ export default function UserAccountSecurityPage() {
     return Object.keys(newErrors).length === 0
   }
 
-  // Handle form submission (frontend only, no backend)
+  // Handle form submission - update password in database
   const handleSubmit = async (e) => {
     e.preventDefault()
 
@@ -73,8 +74,33 @@ export default function UserAccountSecurityPage() {
     setIsSubmitting(true)
 
     try {
-      // Simulate success delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      console.log('💾 Updating password in database...')
+      
+      // Get auth token
+      const token = document.cookie.split(';').find(c => c.trim().startsWith('token='))?.split('=')[1]
+      
+      // Call backend API
+      const response = await fetch('http://localhost:8080/S2EH/s2e-backend/api/users/password/', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
+        body: JSON.stringify({
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword
+        })
+      })
+
+      console.log('✅ Response status:', response.status)
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      console.log('✅ Password updated:', data)
 
       // Reset form
       setPasswordForm({
@@ -83,10 +109,10 @@ export default function UserAccountSecurityPage() {
         confirmPassword: ''
       })
 
-      alert('Password updated successfully! (Frontend simulation)')
+      toast.success('✅ Password updated successfully!')
     } catch (error) {
-      console.error('Simulated password change error:', error)
-      alert('An error occurred. Please try again.')
+      console.error('❌ Failed to update password:', error)
+      toast.error(error.message || 'Failed to update password. Please check your current password and try again.')
     } finally {
       setIsSubmitting(false)
     }

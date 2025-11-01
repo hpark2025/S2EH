@@ -42,10 +42,34 @@ export default function ProductImageModal({ show, onClose, images, activeIndex }
   if (!show || !images || images.length === 0) return null
 
   return (
-    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.9)' }}>
-      <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
-        <div className="modal-content bg-transparent border-0">
-          <div className="modal-header border-0 bg-transparent">
+    <div 
+      className="modal fade show d-block" 
+      style={{ 
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        zIndex: 9999,
+        backgroundColor: 'rgba(0,0,0,0.95)'
+      }}
+      onClick={onClose}
+    >
+      <div 
+        className="modal-dialog" 
+        style={{
+          margin: 0,
+          maxWidth: '100%',
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="modal-content bg-transparent border-0" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <div className="modal-header border-0 bg-transparent position-absolute top-0 start-0 end-0" style={{ zIndex: 10 }}>
             <h5 className="modal-title text-white">
               <i className="bi bi-images me-2"></i>Product Images
             </h5>
@@ -56,13 +80,18 @@ export default function ProductImageModal({ show, onClose, images, activeIndex }
               aria-label="Close"
             ></button>
           </div>
-          <div className="modal-body text-center p-0">
-            <div className="position-relative">
+          <div className="modal-body text-center p-0 d-flex align-items-center justify-content-center" style={{ flex: 1, overflow: 'auto' }}>
+            <div className="position-relative d-flex align-items-center justify-content-center" style={{ width: '100%', height: '100%', padding: '60px 20px' }}>
               <img 
                 src={images[currentIndex]} 
                 alt={`Product image ${currentIndex + 1}`}
-                className="img-fluid rounded"
-                style={{ maxHeight: '70vh', maxWidth: '100%' }}
+                className="img-fluid"
+                style={{ 
+                  maxHeight: 'calc(100vh - 200px)', 
+                  maxWidth: 'calc(100vw - 40px)',
+                  objectFit: 'contain',
+                  borderRadius: '8px'
+                }}
               />
               
               {images.length > 1 && (
@@ -87,46 +116,53 @@ export default function ProductImageModal({ show, onClose, images, activeIndex }
                   
                   {/* Image Counter */}
                   <div 
-                    className="position-absolute bottom-0 end-0 bg-dark text-white px-3 py-1 rounded-top-start"
+                    className="position-absolute top-0 end-0 bg-dark text-white px-3 py-1 rounded-bottom-start"
                     style={{ opacity: 0.8 }}
                   >
                     {currentIndex + 1} / {images.length}
                   </div>
                 </>
               )}
-            </div>
-            
-            {/* Thumbnail Navigation */}
-            {images.length > 1 && (
-              <div className="mt-3 d-flex justify-content-center flex-wrap">
-                {images.map((image, index) => (
-                  <button
-                    key={index}
-                    className={`btn p-1 me-2 mb-2 ${
-                      index === currentIndex ? 'border border-primary' : 'border border-secondary'
-                    }`}
-                    onClick={() => goToImage(index)}
-                  >
-                    <img 
-                      src={image} 
-                      alt={`Thumbnail ${index + 1}`}
-                      style={{ 
-                        width: '60px', 
-                        height: '60px', 
-                        objectFit: 'cover',
-                        opacity: index === currentIndex ? 1 : 0.6
+              
+              {/* Thumbnail Navigation */}
+              {images.length > 1 && (
+                <div 
+                  className="position-absolute bottom-0 start-50 translate-middle-x mb-3 d-flex justify-content-center flex-wrap"
+                  style={{ maxWidth: '90%' }}
+                >
+                  {images.map((image, index) => (
+                    <button
+                      key={index}
+                      className={`btn p-1 me-2 mb-2 ${
+                        index === currentIndex ? 'border border-primary' : 'border border-secondary'
+                      }`}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        goToImage(index)
                       }}
-                      className="rounded"
-                    />
-                  </button>
-                ))}
-              </div>
-            )}
+                      style={{ backgroundColor: index === currentIndex ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)' }}
+                    >
+                      <img 
+                        src={image} 
+                        alt={`Thumbnail ${index + 1}`}
+                        style={{ 
+                          width: '60px', 
+                          height: '60px', 
+                          objectFit: 'cover',
+                          opacity: index === currentIndex ? 1 : 0.6
+                        }}
+                        className="rounded"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-          <div className="modal-footer border-0 bg-transparent justify-content-center">
+          <div className="modal-footer border-0 bg-transparent justify-content-center position-absolute bottom-0 start-0 end-0" style={{ zIndex: 10 }}>
             <small className="text-white-50">
               <i className="bi bi-info-circle me-1"></i>
-              Use arrow keys or click thumbnails to navigate
+              Use arrow keys or click thumbnails to navigate • Press ESC to close
             </small>
           </div>
         </div>

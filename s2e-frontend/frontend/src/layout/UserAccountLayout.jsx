@@ -2,12 +2,15 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { useAppState } from '../context/AppContext.jsx'
 import { authAPI } from '../services/authAPI.js'
+import { toast } from 'react-hot-toast'
 
 export default function UserAccountLayout() {
   const navigate = useNavigate()
   const { state, dispatch } = useAppState()
   const [showAvatarModal, setShowAvatarModal] = useState(false)
   const [avatarPreview, setAvatarPreview] = useState('/images/unknown.jpg')
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [uploading, setUploading] = useState(false)
   const [userData, setUserData] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -20,14 +23,21 @@ export default function UserAccountLayout() {
     try {
       const response = await authAPI.getCurrentUser()
       if (response.success) {
-        setUserData(response.data.user)
+        const user = response.data.user
+        setUserData(user)
+        
+        // Set avatar preview if user has avatar
+        if (user.avatar) {
+          setAvatarPreview('http://localhost:8080' + user.avatar)
+        }
+        
         // Update context with fresh user data
         dispatch({ 
           type: 'auth/login', 
-          user: response.data.user 
+          user: user
         })
         // Update localStorage
-        localStorage.setItem('user', JSON.stringify(response.data.user))
+        localStorage.setItem('user', JSON.stringify(user))
       }
     } catch (error) {
       console.error('Error loading user data:', error)
@@ -35,7 +45,11 @@ export default function UserAccountLayout() {
       const storedUser = localStorage.getItem('user')
       if (storedUser) {
         try {
-          setUserData(JSON.parse(storedUser))
+          const user = JSON.parse(storedUser)
+          setUserData(user)
+          if (user.avatar) {
+            setAvatarPreview('http://localhost:8080' + user.avatar)
+          }
         } catch (parseError) {
           console.error('Error parsing stored user data:', parseError)
           // If no stored data, use context data
@@ -65,11 +79,20 @@ export default function UserAccountLayout() {
   const handleAvatarChange = (e) => {
     const file = e.target.files[0]
     if (file) {
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
-        alert('File size must be less than 5MB')
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please select an image file')
         return
       }
       
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast.error('File size must be less than 5MB')
+        return
+      }
+      
+      setSelectedFile(file)
+      
+      // Create preview
       const reader = new FileReader()
       reader.onload = (event) => {
         setAvatarPreview(event.target.result)
@@ -78,10 +101,73 @@ export default function UserAccountLayout() {
     }
   }
 
-  const handleUploadAvatar = () => {
-    // Simulate upload
-    alert('Profile picture updated successfully!')
-    setShowAvatarModal(false)
+  const handleUploadAvatar = async () => {
+    if (!selectedFile) {
+      toast.error('Please select a file first')
+      return
+    }
+
+    try {
+      setUploading(true)
+      console.log('📤 Uploading avatar to database...')
+      
+      // Get auth token
+      const token = document.cookie.split(';').find(c => c.trim().startsWith('token='))?.split('=')[1]
+      
+      // Create FormData for file upload
+      const formData = new FormData()
+      formData.append('avatar', selectedFile)
+      
+      // Upload to backend
+      const response = await fetch('http://localhost:8080/S2EH/s2e-backend/api/users/avatar/', {
+        method: 'POST',
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : ''
+          // Don't set Content-Type header, let browser set it for FormData
+        },
+        body: formData
+      })
+
+      console.log('✅ Response status:', response.status)
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      console.log('✅ Avatar uploaded:', data)
+
+      // Update avatar preview with new path
+      if (data.data?.avatar) {
+        const newAvatarPath = 'http://localhost:8080' + data.data.avatar
+        setAvatarPreview(newAvatarPath)
+        
+        // Update userData
+        setUserData(prev => ({
+          ...prev,
+          avatar: data.data.avatar
+        }))
+        
+        // Update localStorage
+        const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
+        currentUser.avatar = data.data.avatar
+        localStorage.setItem('user', JSON.stringify(currentUser))
+      }
+
+      toast.success('✅ Profile picture updated successfully!')
+      setShowAvatarModal(false)
+      setSelectedFile(null)
+      
+      // Reload user data to get fresh avatar
+      await loadUserData()
+      
+    } catch (error) {
+      console.error('❌ Failed to upload avatar:', error)
+      toast.error(error.message || 'Failed to upload profile picture')
+    } finally {
+      setUploading(false)
+    }
   }
 
   return (
@@ -115,7 +201,14 @@ export default function UserAccountLayout() {
                   </button>
                 </div>
                 <h5 className="mb-1">
-                  {loading ? 'Loading...' : userData ? `${userData.firstName} ${userData.lastName}` : 'User Name'}
+                  {(() => {
+                    if (loading) return 'Loading...'
+                    if (!userData) return 'User Name'
+                    const firstName = userData.first_name || userData.firstName || ''
+                    const lastName = userData.last_name || userData.lastName || ''
+                    const fullName = `${firstName} ${lastName}`.trim()
+                    return fullName || 'User Name'
+                  })()}
                 </h5>
                 <p className="text-muted mb-2">
                   {loading ? 'Loading...' : userData?.email || 'user@email.com'}
@@ -134,7 +227,7 @@ export default function UserAccountLayout() {
                       to="/auth/account/profile" 
                       className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
                     >
-                      <i className="bi bi-person me-2"></i>My Profile
+                      <i className="bi bi-person me-2"></i>Profile
                     </NavLink>
                   </li>
                   <li className="nav-item">
@@ -142,16 +235,7 @@ export default function UserAccountLayout() {
                       to="/auth/account/orders" 
                       className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
                     >
-                      <i className="bi bi-box-seam me-2"></i>My Orders
-                      <span className="badge bg-primary ms-auto ">3</span>
-                    </NavLink>
-                  </li>
-                  <li className="nav-item">
-                    <NavLink 
-                      to="/auth/account/settings" 
-                      className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
-                    >
-                      <i className="bi bi-geo-alt me-2"></i>Addresses
+                      <i className="bi bi-box-seam me-2"></i>Orders
                     </NavLink>
                   </li>
                   <li className="nav-item">
@@ -232,7 +316,17 @@ export default function UserAccountLayout() {
                 <button 
                   type="button" 
                   className="btn btn-secondary" 
-                  onClick={() => setShowAvatarModal(false)}
+                  onClick={() => {
+                    setShowAvatarModal(false)
+                    setSelectedFile(null)
+                    // Reset to current avatar if user canceled
+                    if (userData?.avatar) {
+                      setAvatarPreview('http://localhost:8080' + userData.avatar)
+                    } else {
+                      setAvatarPreview('/images/unknown.jpg')
+                    }
+                  }}
+                  disabled={uploading}
                 >
                   Cancel
                 </button>
@@ -240,8 +334,18 @@ export default function UserAccountLayout() {
                   type="button" 
                   className="btn btn-primary" 
                   onClick={handleUploadAvatar}
+                  disabled={uploading || !selectedFile}
                 >
-                  Upload
+                  {uploading ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-upload me-1"></i>Upload
+                    </>
+                  )}
                 </button>
               </div>
             </div>

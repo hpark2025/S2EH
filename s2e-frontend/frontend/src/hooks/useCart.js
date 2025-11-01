@@ -1,15 +1,48 @@
 import { useState, useEffect } from 'react'
+import { userCartAPI } from '../services/userCartAPI'
 
 /**
- * Custom hook to manage cart state from localStorage
+ * Custom hook to manage cart state from database and localStorage
  * @returns {Object} Cart utilities
  */
 export function useCart() {
   const [cartCount, setCartCount] = useState(0)
   const [cart, setCart] = useState([])
 
-  // Load cart from localStorage
-  const loadCart = () => {
+  // Load cart from database
+  const loadCartFromDatabase = async () => {
+    try {
+      console.log('🛒 Loading cart from database...')
+      const response = await userCartAPI.getCart()
+      console.log('✅ Database cart response:', response)
+      
+      if (response && response.items) {
+        const items = response.items
+        const count = items.reduce((sum, item) => sum + item.quantity, 0)
+        console.log('🛒 Database cart count:', count)
+        
+        setCart(items)
+        setCartCount(count)
+        
+        // Sync to localStorage for backward compatibility
+        localStorage.setItem('cart', JSON.stringify(items))
+        
+        return items
+      }
+      
+      console.log('🛒 No cart found in database')
+      setCart([])
+      setCartCount(0)
+      return []
+    } catch (error) {
+      console.error('❌ Failed to load cart from database:', error)
+      // Fallback to localStorage if database fails
+      return loadCartFromLocalStorage()
+    }
+  }
+
+  // Load cart from localStorage (fallback)
+  const loadCartFromLocalStorage = () => {
     try {
       const savedCart = localStorage.getItem('cart')
       console.log('🛒 Loading cart from localStorage:', savedCart)
@@ -38,11 +71,22 @@ export function useCart() {
     }
   }
 
+  // Load cart (tries database first, falls back to localStorage)
+  const loadCart = async () => {
+    // Check if user is logged in
+    const token = document.cookie.split(';').find(c => c.trim().startsWith('token='))
+    if (token) {
+      return await loadCartFromDatabase()
+    } else {
+      return loadCartFromLocalStorage()
+    }
+  }
+
   // Add item to cart
   const addToCart = (product, quantity = 1) => {
     try {
       console.log('➕ Adding to cart:', product.title, 'Qty:', quantity)
-      const currentCart = loadCart()
+      const currentCart = loadCartFromLocalStorage()
       
       // Check if product already exists in cart
       const existingItemIndex = currentCart.findIndex(item => item.id === product.id)
@@ -91,7 +135,7 @@ export function useCart() {
   // Remove item from cart
   const removeFromCart = (productId) => {
     try {
-      const currentCart = loadCart()
+      const currentCart = loadCartFromLocalStorage()
       const updatedCart = currentCart.filter(item => item.id !== productId)
       
       localStorage.setItem('cart', JSON.stringify(updatedCart))
@@ -124,10 +168,11 @@ export function useCart() {
 
   // Listen for cart updates from other components
   useEffect(() => {
+    // Load cart on mount
     loadCart()
     
-    const handleCartUpdate = () => {
-      loadCart()
+    const handleCartUpdate = async () => {
+      await loadCart()
     }
     
     window.addEventListener('cartUpdated', handleCartUpdate)
