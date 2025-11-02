@@ -19,6 +19,10 @@ export default function UserCartPage() {
   const [showClearModal, setShowClearModal] = useState(false)
   const [itemToRemove, setItemToRemove] = useState(null)
   
+  // Checkbox selection state
+  const [selectedItems, setSelectedItems] = useState({})
+  const [selectAll, setSelectAll] = useState(false)
+  
   // Static cart data for visualization matching the screenshot
   const [cartItems, setCartItems] = useState([
     {
@@ -67,6 +71,17 @@ export default function UserCartPage() {
   useEffect(() => {
     loadCart()
   }, [])
+  
+  // Initialize selected items when cart items change
+  useEffect(() => {
+    if (cartItems.length > 0) {
+      const initialSelectedState = {}
+      cartItems.forEach(item => {
+        initialSelectedState[item.id] = selectAll
+      })
+      setSelectedItems(initialSelectedState)
+    }
+  }, [cartItems, selectAll])
 
   // Listen for cart updates from other components
   useEffect(() => {
@@ -87,11 +102,26 @@ export default function UserCartPage() {
     }
   }, [cartItems])
 
-  // Calculate totals
-  const subtotal = cartItems.reduce((total, item) => {
+  // Get number of selected items
+  const selectedCount = Object.values(selectedItems).filter(Boolean).length
+  
+  // Calculate totals for all items
+  const allItemsSubtotal = cartItems.reduce((total, item) => {
     const price = parseFloat(item.price) || 0
     return total + (price * item.quantity)
   }, 0)
+  
+  // Calculate totals for selected items only
+  const selectedItemsSubtotal = cartItems.reduce((total, item) => {
+    if (selectedItems[item.id]) {
+      const price = parseFloat(item.price) || 0
+      return total + (price * item.quantity)
+    }
+    return total
+  }, 0)
+  
+  // Use selected items total if any are selected, otherwise use all items total
+  const subtotal = selectedCount > 0 ? selectedItemsSubtotal : allItemsSubtotal
   
   // No discount applied
   const total = subtotal
@@ -137,6 +167,26 @@ export default function UserCartPage() {
     // Dispatch event to update cart badge
     window.dispatchEvent(new Event('cartUpdated'))
     setShowClearModal(false)
+  }
+  
+  // Handle checkbox selection
+  const handleSelectItem = (id) => {
+    setSelectedItems(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }))
+  }
+  
+  // Handle select all checkbox
+  const handleSelectAll = () => {
+    const newSelectAll = !selectAll
+    setSelectAll(newSelectAll)
+    
+    const updatedSelectedItems = {}
+    cartItems.forEach(item => {
+      updatedSelectedItems[item.id] = newSelectAll
+    })
+    setSelectedItems(updatedSelectedItems)
   }
 
   return (
@@ -190,11 +240,26 @@ export default function UserCartPage() {
                   <div className="card-header bg-white border-0 py-2">
 
                     <div className="d-flex align-items-center mt-2">
+                      <div className="form-check me-2">
+                        <input
+                          className="form-check-input"
+                          type="checkbox"
+                          id="selectAllCheckbox"
+                          checked={selectAll}
+                          onChange={handleSelectAll}
+                        />
+                        <label className="form-check-label" htmlFor="selectAllCheckbox">
+                          Select All
+                        </label>
+                      </div>
                       <span className="fw-bold me-2" style={{ fontSize: '1.1rem' }}>{cartItems.length}</span>
                       <span style={{ color: '#6c757d' }}>items in cart</span>
+                      {selectedCount > 0 && (
+                        <span className="ms-2 badge bg-primary">{selectedCount} selected</span>
+                      )}
                     </div>
 
-                                        <div className="d-flex justify-content-end">
+                    <div className="d-flex justify-content-end">
                       <button
                         className="btn btn-sm text-danger d-flex align-items-center border-0 p-0"
                         onClick={handleClearClick}
@@ -226,8 +291,21 @@ export default function UserCartPage() {
                           className={`p-3 ${index < cartItems.length - 1 ? 'border-bottom' : ''}`}
                         >
                         <div className="row align-items-center">
+                          {/* Checkbox */}
+                          <div className="col-1 text-center">
+                            <div className="form-check">
+                              <input
+                                className="form-check-input"
+                                type="checkbox"
+                                id={`item-${item.id}`}
+                                checked={selectedItems[item.id] || false}
+                                onChange={() => handleSelectItem(item.id)}
+                              />
+                            </div>
+                          </div>
+                          
                           {/* Product Image */}
-                          <div className="col-4 col-md-3 text-center">
+                          <div className="col-3 col-md-2 text-center">
                             <img
                               src={item.thumbnail || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect width="100" height="100" fill="%23f8f9fa"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="12" fill="%23adb5bd"%3ENo Image%3C/text%3E%3C/svg%3E'}
                               alt={item.title}
@@ -289,7 +367,7 @@ export default function UserCartPage() {
                                     onClick={() => handleRemoveClick(item)}
                                     title="Remove item"
                                   >
-                                    <span className="text-danger">Remove</span>
+                                    <i className="bi bi-trash text-danger"></i>
                                   </button>
                                 </div>
                               </div>
@@ -308,6 +386,16 @@ export default function UserCartPage() {
                   <div className="card-body">
                     <h5 className="mb-3">Order Summary</h5>
                     
+                    {selectedCount > 0 ? (
+                      <div className="alert alert-info mb-3 py-2" role="alert">
+                        <small><i className="bi bi-info-circle me-1"></i> Showing total for {selectedCount} selected items</small>
+                      </div>
+                    ) : (
+                      <div className="alert alert-secondary mb-3 py-2" role="alert">
+                        <small><i className="bi bi-info-circle me-1"></i> Showing total for all items</small>
+                      </div>
+                    )}
+                    
                     <div className="d-flex justify-content-between mb-3">
                       <span style={{ fontSize: '0.95rem' }}>Subtotal</span>
                       <span className="fw-bold" style={{ fontFamily: 'monospace' }}>₱{subtotal.toFixed(2)}</span>
@@ -320,33 +408,58 @@ export default function UserCartPage() {
                       <span className="fw-bold fs-5" style={{ color: '#1B5E20', fontFamily: 'monospace' }}>₱{subtotal.toFixed(2)}</span>
                     </div>
 
-                    <Link 
-                      to="/user/checkout"
-                      className="btn btn-success w-100 mb-3"
-                      style={{ 
-                        backgroundColor: '#2E7D32',
-                        borderColor: '#2E7D32',
-                        transition: 'all 0.2s ease'
-                      }}
-                      onMouseOver={(e) => {
-                        e.currentTarget.style.backgroundColor = '#1B5E20';
-                        e.currentTarget.style.borderColor = '#1B5E20';
-                      }}
-                      onMouseOut={(e) => {
-                        e.currentTarget.style.backgroundColor = '#2E7D32';
-                        e.currentTarget.style.borderColor = '#2E7D32';
-                      }}
-                      onMouseDown={(e) => {
-                        e.currentTarget.style.backgroundColor = '#0A3D12';
-                        e.currentTarget.style.borderColor = '#0A3D12';
-                      }}
-                      onMouseUp={(e) => {
-                        e.currentTarget.style.backgroundColor = '#1B5E20';
-                        e.currentTarget.style.borderColor = '#1B5E20';
-                      }}
+                    
+                    {selectedCount > 0 ? (
+                      <div className="mb-3">
+                        <button 
+                          className="btn btn-success w-100"
+                          onClick={() => alert(`Checkout with ${selectedCount} selected items for ₱${selectedItemsSubtotal.toFixed(2)}`)}
+                          style={{ 
+                            backgroundColor: '#2E7D32',
+                            borderColor: '#2E7D32',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseOver={(e) => {
+                            e.currentTarget.style.backgroundColor = '#1B5E20';
+                            e.currentTarget.style.borderColor = '#1B5E20';
+                          }}
+                          onMouseOut={(e) => {
+                            e.currentTarget.style.backgroundColor = '#2E7D32';
+                            e.currentTarget.style.borderColor = '#2E7D32';
+                          }}
+                        >
+                          Checkout Selected Items ({selectedCount})
+                        </button>
+                      </div>
+                    ) : (
+                      <Link 
+                        to="/user/checkout"
+                        className="btn btn-success w-100 mb-3"
+                        style={{ 
+                          backgroundColor: '#2E7D32',
+                          borderColor: '#2E7D32',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.backgroundColor = '#1B5E20';
+                          e.currentTarget.style.borderColor = '#1B5E20';
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.backgroundColor = '#2E7D32';
+                          e.currentTarget.style.borderColor = '#2E7D32';
+                        }}
+                        onMouseDown={(e) => {
+                          e.currentTarget.style.backgroundColor = '#0A3D12';
+                          e.currentTarget.style.borderColor = '#0A3D12';
+                        }}
+                        onMouseUp={(e) => {
+                          e.currentTarget.style.backgroundColor = '#1B5E20';
+                          e.currentTarget.style.borderColor = '#1B5E20';
+                        }}
                     >
                       Proceed to Checkout
                     </Link>
+                    )}
                     
                     <div className="text-center">
                       <p className="mb-2 small">We Accept</p>
