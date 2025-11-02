@@ -321,7 +321,7 @@ export default function UserCartPage() {
                             <small className="text-muted d-block" style={{ fontSize: '0.8rem', color: '#6c757d' }}>{item.seller_name}</small>
                           </div>
 
-                            {/* Price, Quantity, Total, Remove - Responsive Layout */}
+                            {/* Price, Quantity, Total, Remove - Responsive Layouts */}
                             <div className="col-12 col-md-6">
                               <div className="row align-items-center mt-2 mt-md-0">
                                 {/* Price */}
