@@ -327,10 +327,10 @@ export default function UserCartPage() {
               </Link>
             </div>
           ) : (
-            <div className="row g-3">
+            <div className="row">
               {/* Cart Items */}
-              <div className="col-lg-9">
-                <div className="card shadow-sm border-0 h-100">
+              <div className="col-lg-8">
+                <div className="card shadow-sm border-0">
                   <div className="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3">
                     <h5 className="mb-0 fw-bold">
                       <i className="bi bi-cart3 me-2 text-primary"></i>
@@ -351,23 +351,22 @@ export default function UserCartPage() {
                       </button>
                     </div>
                   </div>
-                  <div className="card-body p-4">
+                  <div className="card-body p-3">
                     {cartItems.map((item, index) => (
                       <div
                         key={item.id}
-                        className={`cart-item bg-white rounded mb-3 ${index < cartItems.length - 1 ? '' : ''}`}
+                        className={`cart-item bg-white rounded ${index < cartItems.length - 1 ? 'mb-3' : ''}`}
                         style={{ 
                           transition: 'all 0.3s ease', 
-                          padding: '20px',
-                          border: '1px solid #dee2e6',
-                          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                          padding: '16px',
+                          border: '1px solid #e9ecef',
                         }}
                       >
-                        <div className="row align-items-center">
+                        <div className="d-flex align-items-center gap-3">
                           {/* Product Image */}
-                          <div className="col-lg-2 col-md-3 col-4 mb-3 mb-lg-0">
+                          <div style={{ flexShrink: 0 }}>
                             <Link to={`/user/products/${item.id}`} className="text-decoration-none d-block">
-                              <div className="position-relative mx-auto" style={{ width: '100px', height: '100px', overflow: 'hidden', borderRadius: '8px', backgroundColor: '#f8f9fa' }}>
+                              <div className="position-relative" style={{ width: '80px', height: '80px', overflow: 'hidden', borderRadius: '8px', backgroundColor: '#f8f9fa' }}>
                                 <img
                                   src={(() => {
                                     const img = item.thumbnail || item.image || item.images?.[0];
@@ -386,32 +385,31 @@ export default function UserCartPage() {
                             </Link>
                           </div>
 
-                          {/* Product Name & Store */}
-                          <div className="col-lg-2 col-md-3 col-8 mb-3 mb-lg-0">
+                          {/* Product Info */}
+                          <div style={{ flexGrow: 1, minWidth: 0 }}>
                             <Link to={`/user/products/${item.id}`} className="text-decoration-none text-dark">
-                              <h6 className="mb-1 fw-bold" style={{ fontSize: '1.1rem', lineHeight: '1.4' }}>{item.title}</h6>
+                              <h6 className="mb-1 fw-bold" style={{ fontSize: '1rem', lineHeight: '1.3' }}>{item.title}</h6>
                             </Link>
-                            <p className="mb-0 text-muted small d-flex align-items-center">
+                            <p className="mb-1 text-muted small d-flex align-items-center">
                               <i className="bi bi-shop me-1"></i>
-                              <span>{item.seller_name ? item.seller_name : 'Seller info unavailable'}</span>
+                              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {item.seller_name ? item.seller_name : 'Seller info unavailable'}
+                              </span>
                             </p>
-                          </div>
-
-                          {/* LGU Badge */}
-                          <div className="col-lg-1 col-md-1 col-auto mb-3 mb-lg-0 d-flex align-items-center justify-content-center">
-                            <span className="badge" style={{ backgroundColor: '#28a745', color: '#fff', padding: '6px 12px', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
-                              <i className="bi bi-shield-check me-1"></i>LGU
-                            </span>
+                            <div className="d-flex align-items-center gap-2">
+                              <span className="badge" style={{ backgroundColor: '#28a745', color: '#fff', padding: '4px 8px', fontSize: '0.75rem' }}>
+                                <i className="bi bi-shield-check me-1"></i>LGU
+                              </span>
+                              <span className="text-muted small">₱{item.price.toFixed(2)}</span>
+                            </div>
                           </div>
 
                           {/* Quantity Controls */}
-                          <div className="col-lg-6 col-md-4 col-12 mb-3 mb-lg-0 d-flex align-items-center justify-content-lg-end justify-content-center">
+                          <div style={{ flexShrink: 0 }}>
                             <div 
                               className="quantity-selector d-flex align-items-center border rounded" 
                               style={{ 
-                                width: 'fit-content',
-                                minWidth: '140px',
-                                flexShrink: 0
+                                width: 'fit-content'
                               }}
                             >
                               <button
@@ -419,17 +417,12 @@ export default function UserCartPage() {
                                 onClick={() => updateQuantity(item.id, item.quantity - 1)}
                                 disabled={item.quantity <= 1}
                                 style={{ 
-                                  minWidth: '40px', 
-                                  width: '40px',
-                                  height: '40px',
-                                  fontSize: '1.2rem',
+                                  width: '36px', 
+                                  height: '36px',
+                                  fontSize: '1.1rem',
                                   fontWeight: 'bold',
                                   color: item.quantity <= 1 ? '#adb5bd' : '#000',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  padding: '0',
-                                  flexShrink: 0
+                                  padding: '0'
                                 }}
                                 title="Decrease quantity"
                               >
@@ -446,29 +439,22 @@ export default function UserCartPage() {
                                   updateQuantity(item.id, Math.max(1, Math.min(99, val)))
                                 }}
                                 style={{ 
-                                  width: '60px',
-                                  minWidth: '60px',
-                                  height: '40px',
-                                  fontSize: '1rem',
+                                  width: '50px',
+                                  height: '36px',
+                                  fontSize: '0.95rem',
                                   fontWeight: '600',
-                                  padding: '0',
-                                  flexShrink: 0
+                                  padding: '0'
                                 }}
                               />
                               <button
                                 className="btn btn-light border-0"
                                 onClick={() => updateQuantity(item.id, item.quantity + 1)}
                                 style={{ 
-                                  minWidth: '40px', 
-                                  width: '40px',
-                                  height: '40px',
-                                  fontSize: '1.2rem',
+                                  width: '36px', 
+                                  height: '36px',
+                                  fontSize: '1.1rem',
                                   fontWeight: 'bold',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  padding: '0',
-                                  flexShrink: 0
+                                  padding: '0'
                                 }}
                                 title="Increase quantity"
                               >
@@ -478,18 +464,15 @@ export default function UserCartPage() {
                           </div>
 
                           {/* Trash Icon */}
-                          <div className="col-lg-1 col-md-1 col-12 d-flex justify-content-lg-end justify-content-center">
+                          <div style={{ flexShrink: 0 }}>
                             <button
                               className="btn btn-danger btn-sm"
                               onClick={() => handleRemoveClick(item)}
                               title="Remove item"
                               style={{ 
-                                width: '45px', 
-                                height: '45px', 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                justifyContent: 'center',
-                                flexShrink: 0
+                                width: '40px', 
+                                height: '40px', 
+                                padding: '0'
                               }}
                             >
                               <i className="bi bi-trash"></i>
@@ -502,8 +485,8 @@ export default function UserCartPage() {
                 </div>
               </div>
 
-              {/* Order Summary & Shipping Information */}
-              <div className="col-lg-3">
+              {/* Order Summary */}
+              <div className="col-lg-4">
                 <div className="sticky-top" style={{ top: '20px' }}>
                   {/* Order Summary Card */}
                   <div className="card mb-3 shadow-sm border-0">
