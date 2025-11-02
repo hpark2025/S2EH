@@ -7,6 +7,7 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 import { getLocationCoordinates } from '../../services/geocodingService'
+import { userCartAPI } from '../../services/userCartAPI'
 
 // Fix for default marker icon
 delete L.Icon.Default.prototype._getIconUrl
@@ -24,7 +25,6 @@ export default function UserCheckoutPage() {
   // Component state
   const [selectedAddress, setSelectedAddress] = useState(null)
   const [selectedPayment, setSelectedPayment] = useState('cod')
-  const [orderNotes, setOrderNotes] = useState('')
   const [showAddAddressModal, setShowAddAddressModal] = useState(false)
   const [isPlacingOrder, setIsPlacingOrder] = useState(false)
   const [cartItems, setCartItems] = useState([])
@@ -33,12 +33,105 @@ export default function UserCheckoutPage() {
   const [loadingAddresses, setLoadingAddresses] = useState(true)
   const [addressCoordinates, setAddressCoordinates] = useState({})
 
-  const loadCart = useCallback(() => {
+  const loadCart = useCallback(async () => {
     try {
-      const savedCart = localStorage.getItem('cart')
-      if (savedCart) {
-        const parsedCart = JSON.parse(savedCart)
-        console.log('📦 Loaded cart from localStorage:', parsedCart)
+      setLoading(true)
+      
+      // Check if user is logged in - prioritize token check over app state
+      // Token is more reliable on page reload as app state might not be initialized yet
+      const tokenCookie = document.cookie.split(';').find(c => c.trim().startsWith('token='))
+      const token = tokenCookie ? tokenCookie.split('=')[1] : null
+      
+      // Also check localStorage for token as fallback
+      const localStorageToken = localStorage.getItem('token') || localStorage.getItem('customerToken') || localStorage.getItem('userToken')
+      
+      // Use token if available (more reliable than isLoggedIn state on page reload)
+      const hasAuth = token || localStorageToken
+      
+      console.log('📦 Checkout - Auth check - Token from cookie:', !!token)
+      console.log('📦 Checkout - Auth check - Token from localStorage:', !!localStorageToken)
+      console.log('📦 Checkout - Auth check - isLoggedIn state:', isLoggedIn)
+      console.log('📦 Checkout - Auth check - hasAuth:', hasAuth)
+      
+      if (hasAuth) {
+        // Load from database
+        console.log('📦 Checkout - Loading cart from database...')
+        try {
+          const response = await userCartAPI.getCart()
+          console.log('✅ Checkout - Database cart response:', response)
+          
+          // Handle response structure: response.data contains the cart data
+          const cartData = response || {}
+          const items = cartData.items || []
+          
+          console.log('📦 Checkout - Cart items array:', items)
+          console.log('📦 Checkout - Items count:', items.length)
+          
+          if (items && Array.isArray(items) && items.length > 0) {
+            // Map database items to cart format
+            const mappedItems = items.map(item => {
+              console.log('📦 Checkout - Mapping item:', item)
+              
+              // Build image URL if it's a relative path
+              let imageUrl = item.product_image || item.thumbnail || item.image || null
+              if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
+                imageUrl = `http://localhost:8080/S2EH/s2e-backend${imageUrl}`
+              }
+              
+              const mappedItem = {
+                id: item.product_id,
+                title: item.product_name || item.product_title || item.title || 'Product',
+                price: parseFloat(item.current_price || item.price || item.product_price || 0),
+                quantity: parseInt(item.quantity || 1),
+                thumbnail: imageUrl,
+                image: imageUrl,
+                images: imageUrl ? [imageUrl] : [],
+                seller_name: item.seller_name || 'Unknown Seller',
+                sku: item.product_sku || item.sku || null,
+                cart_item_id: item.id // Store cart item ID for database operations
+              }
+              
+              console.log('📦 Checkout - Mapped item:', mappedItem)
+              return mappedItem
+            })
+            
+            console.log('📦 Checkout - Mapped cart items:', mappedItems)
+            console.log('📦 Checkout - Setting cart items, count:', mappedItems.length)
+            
+            setCartItems(mappedItems)
+            
+            // Sync to localStorage for backward compatibility
+            localStorage.setItem('cart', JSON.stringify(mappedItems))
+            
+            setLoading(false)
+            return
+          } else {
+            console.log('📦 Checkout - No items in database cart or empty array')
+            console.log('📦 Checkout - Items value:', items)
+            setCartItems([])
+            localStorage.setItem('cart', JSON.stringify([]))
+            
+            // Redirect to cart if cart is empty
+            toast.error('Your cart is empty')
+            navigate('/user/cart')
+            setLoading(false)
+            return
+          }
+        } catch (dbError) {
+          console.error('❌ Checkout - Error loading from database, falling back to localStorage:', dbError)
+          console.error('❌ Checkout - Error details:', dbError.message)
+          // Fall through to localStorage loading
+        }
+      } else {
+        console.log('📦 Checkout - User not logged in or no token, loading from localStorage')
+      }
+      
+      // Fallback to localStorage
+      console.log('📦 Checkout - Loading cart from localStorage...')
+      const cartData = localStorage.getItem('cart')
+      if (cartData) {
+        const parsedCart = JSON.parse(cartData)
+        console.log('📦 Checkout - Loaded cart from localStorage:', parsedCart)
         setCartItems(parsedCart)
         
         // Redirect to cart if cart is empty
@@ -47,17 +140,18 @@ export default function UserCheckoutPage() {
           navigate('/user/cart')
         }
       } else {
+        console.log('📦 Checkout - No cart found in localStorage')
         toast.error('Your cart is empty')
         navigate('/user/cart')
       }
     } catch (error) {
-      console.error('Failed to load cart:', error)
+      console.error('❌ Checkout - Failed to load cart:', error)
       toast.error('Failed to load cart')
       navigate('/user/cart')
     } finally {
       setLoading(false)
     }
-  }, [navigate])
+  }, [navigate, isLoggedIn])
 
   // Geocode addresses to get coordinates using geocodingService
   const geocodeAddresses = async (addressList) => {
@@ -295,9 +389,9 @@ export default function UserCheckoutPage() {
           </div>
         </div>
 
-        {/* Main Checkout Layout - 3 Cards Stacked Vertically */}
+        {/* Main Checkout Layout */}
         <div className="row g-4">
-          {/* Left Side: 3 Cards Stacked Vertically - Takes 8 columns */}
+          {/* Left Side: Cards Stacked Vertically - Takes 8 columns */}
           <div className="col-lg-8 order-1" style={{ display: 'flex', flexDirection: 'column' }}>
             {/* Card 1: Delivery Information */}
             <div className="card shadow-sm mb-4" style={{ backgroundColor: '#ffffff', width: '100%' }}>
@@ -393,14 +487,6 @@ export default function UserCheckoutPage() {
                     })
                   )}
                 </div>
-
-                <button 
-                  type="button" 
-                  className="btn btn-outline-primary"
-                  onClick={() => setShowAddAddressModal(true)}
-                >
-                  <i className="bi bi-plus me-1"></i>Add New Address
-                </button>
               </div>
             </div>
 
@@ -451,22 +537,6 @@ export default function UserCheckoutPage() {
                     </div>
                   </label>
                 </div>
-              </div>
-            </div>
-
-            {/* Card 3: Order Notes */}
-            <div className="card shadow-sm mb-4" style={{ backgroundColor: '#ffffff', width: '100%' }}>
-              <div className="card-body p-4">
-                <h6 className="mb-3 fw-bold text-info">
-                  <i className="bi bi-chat-text me-2"></i>Order Notes (Optional)
-                </h6>
-                <textarea 
-                  className="form-control" 
-                  rows="3"
-                  placeholder="Any special requests or notes for your order..." 
-                  value={orderNotes}
-                  onChange={(e) => setOrderNotes(e.target.value)}
-                />
               </div>
             </div>
           </div>
