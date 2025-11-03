@@ -94,31 +94,11 @@ export default function SellerSidebar({ collapsed = false }) {
         
         <div className="nav-item">
           <NavLink 
-            to="/seller/account" 
-            className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
-          >
-            <i className="bi bi-person-gear"></i>
-            <span>Account</span>
-          </NavLink>
-        </div>
-        
-        <div className="nav-item">
-          <NavLink 
             to="/seller/profile" 
             className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
           >
             <i className="bi bi-person-circle"></i>
             <span>My Profile</span>
-          </NavLink>
-        </div>
-        
-        <div className="nav-item">
-          <NavLink 
-            to="/seller/settings" 
-            className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
-          >
-            <i className="bi bi-gear"></i>
-            <span>Settings</span>
           </NavLink>
         </div>
       </div>

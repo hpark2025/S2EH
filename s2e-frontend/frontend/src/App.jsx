@@ -17,9 +17,7 @@ import SellerStockLocationsPage from './pages/Seller/SellerStockLocationsPage.js
 import SellerCustomersPage from './pages/Seller/SellerCustomersPage.jsx'
 import SellerMessagesPage from './pages/Seller/SellerMessagesPage.jsx'
 import SellerAnalyticsPage from './pages/Seller/SellerAnalyticsPage.jsx'
-import SellerSettingsPage from './pages/Seller/SellerSettingsPage.jsx'
 import SellerProfilePage from './pages/Seller/SellerProfilePage.jsx'
-import SellerAccountPage from './pages/Seller/SellerAccountPage.jsx'
 import AdminDashboardPage from './pages/Admin/AdminDashboardPage.jsx'
 import UserHomePage from './pages/User/UserHomePage.jsx'
 import UserProductsPage from './pages/User/UserProductsPage.jsx'
@@ -114,8 +112,6 @@ function App() {
           <Route path="customers" element={<SellerCustomersPage />} />
           <Route path="messages" element={<SellerMessagesPage />} />
           <Route path="analytics" element={<SellerAnalyticsPage />} />
-          <Route path="account" element={<SellerAccountPage />} />
-          <Route path="settings" element={<SellerSettingsPage />} />
           <Route path="profile" element={<SellerProfilePage />} />
         </Route>
 
