@@ -4,7 +4,6 @@ import { adminAPI } from '../../services/adminAPI.js'
 
 export default function AdminDashboardPage() {
   const salesRef = useRef(null)
-  const categoryRef = useRef(null)
   const performanceRef = useRef(null)
   
   // State for dashboard data
@@ -38,6 +37,19 @@ export default function AdminDashboardPage() {
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  
+  // Orders table state
+  const [orders, setOrders] = useState([])
+  const [loadingOrders, setLoadingOrders] = useState(true)
+  const [orderStatusFilter, setOrderStatusFilter] = useState('all')
+  
+  // Best selling products state
+  const [bestSellingProducts, setBestSellingProducts] = useState([])
+  
+  // Chart data state
+  const [ordersData, setOrdersData] = useState([])
+  const [salesChartInstance, setSalesChartInstance] = useState(null)
+  const [performanceChartInstance, setPerformanceChartInstance] = useState(null)
 
   // Mock dashboard data for development (no backend)
   const MOCK_DASHBOARD_DATA = {
@@ -113,31 +125,228 @@ export default function AdminDashboardPage() {
     }
 
     fetchDashboardData()
+    loadOrders()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Load orders for the Orders Table card
+  const loadOrders = async () => {
+    try {
+      setLoadingOrders(true)
+      const response = await adminAPI.orders.getAll()
+      
+      // Extract orders from response
+      const ordersData = response.data?.orders || response.orders || []
+      
+      // Map backend order structure to simple format for dashboard table
+      const mappedOrders = ordersData.map((order) => {
+        // Format customer name
+        const firstName = (order.first_name && order.first_name.trim()) || ''
+        const lastName = (order.last_name && order.last_name.trim()) || ''
+        const customerName = `${firstName} ${lastName}`.trim() || 'Unknown Customer'
+        
+        // Get main product from items
+        const items = order.items || []
+        const mainProduct = items.length > 0 
+          ? (items[0].product_title || items[0].product_name || 'Product')
+          : 'No items'
+        
+        // Format date
+        const orderDate = order.created_at 
+          ? new Date(order.created_at).toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'short', 
+              day: 'numeric' 
+            })
+          : ''
+        
+        // Use order_number as the primary identifier (Order ID)
+        const orderNumber = order.order_number || `ORD-${order.id}`
+        
+        return {
+          id: order.id,
+          order_number: orderNumber,
+          customer: customerName,
+          product: mainProduct,
+          amount: parseFloat(order.total || 0),
+          status: order.status || 'pending',
+          date: orderDate
+        }
+      })
+      
+      // Sort by date (newest first)
+      mappedOrders.sort((a, b) => {
+        const dateA = new Date(ordersData.find(o => o.id === a.id)?.created_at || 0)
+        const dateB = new Date(ordersData.find(o => o.id === b.id)?.created_at || 0)
+        return dateB - dateA
+      })
+      
+      // Limit to latest 10 orders for dashboard
+      setOrders(mappedOrders.slice(0, 10))
+      
+      // Store full orders data for charts
+      setOrdersData(ordersData)
+      
+      // Calculate best selling products from all orders
+      const productSales = {}
+      
+      // Loop through all orders and their items
+      ordersData.forEach((order) => {
+        const items = order.items || []
+        items.forEach((item) => {
+          const productName = item.product_title || item.product_name || 'Unknown Product'
+          const quantity = parseInt(item.quantity || 1)
+          
+          if (productSales[productName]) {
+            productSales[productName] += quantity
+          } else {
+            productSales[productName] = quantity
+          }
+        })
+      })
+      
+      // Convert to array and sort by sales (descending)
+      const sortedProducts = Object.entries(productSales)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5) // Top 5 best selling products
+      
+      setBestSellingProducts(sortedProducts)
+    } catch (error) {
+      console.error('Failed to load orders:', error)
+      setOrders([])
+      setBestSellingProducts([])
+    } finally {
+      setLoadingOrders(false)
+    }
+  }
+
+  // Filter orders by status
+  const filteredOrders = orders.filter(order => {
+    if (orderStatusFilter === 'all') return true
+    
+    const orderStatus = order.status.toLowerCase()
+    const filterStatus = orderStatusFilter.toLowerCase()
+    
+    // Handle delivered/completed equivalence
+    if (filterStatus === 'delivered') {
+      return orderStatus === 'delivered' || orderStatus === 'completed'
+    }
+    if (filterStatus === 'completed') {
+      return orderStatus === 'completed' || orderStatus === 'delivered'
+    }
+    
+    // Exact match for other statuses
+    return orderStatus === filterStatus
+  })
+
+  // Calculate sales revenue trend (last 7 days by day)
+  const calculateSalesTrend = (orders) => {
+    if (!orders || orders.length === 0) {
+      return { labels: [], data: [] }
+    }
+    
+    // Get last 7 days
+    const today = new Date()
+    const last7Days = []
+    const revenueByDay = {}
+    
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today)
+      date.setDate(date.getDate() - i)
+      const dateKey = date.toISOString().split('T')[0] // YYYY-MM-DD
+      const dayLabel = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+      last7Days.push({ date: dateKey, label: dayLabel })
+      revenueByDay[dateKey] = 0
+    }
+    
+    // Calculate revenue for each day
+    orders.forEach((order) => {
+      if (order.created_at) {
+        const orderDate = new Date(order.created_at).toISOString().split('T')[0]
+        if (revenueByDay.hasOwnProperty(orderDate)) {
+          revenueByDay[orderDate] += parseFloat(order.total || 0)
+        }
+      }
+    })
+    
+    return {
+      labels: last7Days.map(d => d.label),
+      data: last7Days.map(d => revenueByDay[d.date] || 0)
+    }
+  }
+
+  // Calculate monthly performance (last 6 months)
+  const calculateMonthlyPerformance = (orders) => {
+    if (!orders || orders.length === 0) {
+      return { labels: [], ordersData: [], revenueData: [] }
+    }
+    
+    const today = new Date()
+    const months = []
+    const ordersByMonth = {}
+    const revenueByMonth = {}
+    
+    // Get last 6 months
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(today.getFullYear(), today.getMonth() - i, 1)
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      const monthLabel = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+      months.push({ key: monthKey, label: monthLabel })
+      ordersByMonth[monthKey] = 0
+      revenueByMonth[monthKey] = 0
+    }
+    
+    // Calculate orders count and revenue for each month
+    orders.forEach((order) => {
+      if (order.created_at) {
+        const orderDate = new Date(order.created_at)
+        const monthKey = `${orderDate.getFullYear()}-${String(orderDate.getMonth() + 1).padStart(2, '0')}`
+        
+        if (ordersByMonth.hasOwnProperty(monthKey)) {
+          ordersByMonth[monthKey] += 1
+          revenueByMonth[monthKey] += parseFloat(order.total || 0)
+        }
+      }
+    })
+    
+    // Convert revenue to thousands
+    const revenueData = months.map(m => Math.round(revenueByMonth[m.key] / 1000))
+    
+    return {
+      labels: months.map(m => m.label),
+      ordersData: months.map(m => ordersByMonth[m.key]),
+      revenueData: revenueData
+    }
+  }
 
   useEffect(() => {
     // Ensure DOM elements exist before creating charts
-    if (!salesRef.current || !categoryRef.current || !performanceRef.current) return
+    if (!salesRef.current || !performanceRef.current || ordersData.length === 0) return
 
     const salesCtx = salesRef.current.getContext('2d')
-    const categoryCtx = categoryRef.current.getContext('2d')
     const performanceCtx = performanceRef.current.getContext('2d')
 
-    const monthlyData = {
-      august: {
-        labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5'],
-        data: [15000, 22000, 18000, 25000, 30000],
-      },
+    // Calculate real data from orders
+    const salesTrend = calculateSalesTrend(ordersData)
+    const monthlyPerformance = calculateMonthlyPerformance(ordersData)
+
+    // Destroy existing charts if they exist
+    if (salesChartInstance) {
+      salesChartInstance.destroy()
+    }
+    if (performanceChartInstance) {
+      performanceChartInstance.destroy()
     }
 
     const salesChart = new Chart(salesCtx, {
       type: 'line',
       data: {
-        labels: monthlyData.august.labels,
+        labels: salesTrend.labels,
         datasets: [
           {
-            label: 'Revenue ()',
-            data: monthlyData.august.data,
+            label: 'Revenue (₱)',
+            data: salesTrend.data,
             borderColor: '#2c853f',
             backgroundColor: 'rgba(44, 133, 63, 0.1)',
             borderWidth: 3,
@@ -152,41 +361,23 @@ export default function AdminDashboardPage() {
       },
       options: { 
         responsive: true, 
-        plugins: { legend: { display: false } },
+        plugins: { 
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return '₱' + context.parsed.y.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+              }
+            }
+          }
+        },
         scales: {
           y: {
             beginAtZero: true,
             ticks: {
               callback: function(value) {
-                return '' + value.toLocaleString();
+                return '₱' + value.toLocaleString();
               }
-            }
-          }
-        }
-      },
-    })
-
-    const categoryChart = new Chart(categoryCtx, {
-      type: 'doughnut',
-      data: {
-        labels: ['Agriculture', 'Handicrafts', 'Food Processing', 'Textiles', 'Fisheries'],
-        datasets: [
-          {
-            data: [35, 25, 20, 15, 5],
-            backgroundColor: ['#4caf50', '#ff9800', '#9c27b0', '#3f51b5', '#607d8b'],
-            borderWidth: 2,
-            borderColor: '#ffffff',
-          },
-        ],
-      },
-      options: { 
-        responsive: true,
-        plugins: {
-          legend: {
-            position: 'bottom',
-            labels: {
-              padding: 15,
-              usePointStyle: true
             }
           }
         }
@@ -196,11 +387,11 @@ export default function AdminDashboardPage() {
     const performanceChart = new Chart(performanceCtx, {
       type: 'line',
       data: {
-        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
+        labels: monthlyPerformance.labels,
         datasets: [
           {
             label: 'Orders',
-            data: [12, 18, 15, 22, 25, 30, 28, 35],
+            data: monthlyPerformance.ordersData,
             borderColor: '#e44c31',
             backgroundColor: 'rgba(228, 76, 49, 0.1)',
             borderWidth: 3,
@@ -214,7 +405,7 @@ export default function AdminDashboardPage() {
           },
           {
             label: 'Revenue (K)',
-            data: [15, 22, 18, 28, 32, 38, 35, 42],
+            data: monthlyPerformance.revenueData,
             borderColor: '#2c853f',
             backgroundColor: 'rgba(44, 133, 63, 0.1)',
             borderWidth: 3,
@@ -254,7 +445,7 @@ export default function AdminDashboardPage() {
                   label += ': ';
                 }
                 if (context.dataset.label === 'Revenue (K)') {
-                  label += '' + context.parsed.y + 'K';
+                  label += '₱' + context.parsed.y + 'K';
                 } else {
                   label += context.parsed.y.toLocaleString();
                 }
@@ -314,7 +505,7 @@ export default function AdminDashboardPage() {
             ticks: {
               color: '#2c853f',
               callback: function(value) {
-                return '' + value + 'K';
+                return '₱' + value + 'K';
               }
             },
             grid: {
@@ -325,12 +516,15 @@ export default function AdminDashboardPage() {
       },
     })
 
+    setSalesChartInstance(salesChart)
+    setPerformanceChartInstance(performanceChart)
+
     return () => {
-      salesChart.destroy()
-      categoryChart.destroy()
-      performanceChart.destroy()
+      if (salesChart) salesChart.destroy()
+      if (performanceChart) performanceChart.destroy()
     }
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ordersData])
 
   return (
     <>
@@ -409,11 +603,17 @@ export default function AdminDashboardPage() {
             <div style={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
               <h3 className="card-title" style={{ margin: 0 }}>Orders Table</h3>
               <div>
-                <select className="form-control" style={{ width: '120px', fontSize: '12px' }}>
+                <select 
+                  className="form-control" 
+                  style={{ width: '120px', fontSize: '12px' }}
+                  value={orderStatusFilter}
+                  onChange={(e) => setOrderStatusFilter(e.target.value)}
+                >
                   <option value="all">All Status</option>
                   <option value="pending">Pending</option>
                   <option value="processing">Processing</option>
                   <option value="shipped">Shipped</option>
+                  <option value="delivered">Delivered</option>
                   <option value="completed">Completed</option>
                   <option value="cancelled">Cancelled</option>
                 </select>
@@ -421,46 +621,83 @@ export default function AdminDashboardPage() {
             </div>
           </div>
           <div className="card-body" style={{ padding: 0 }}>
-            <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-              <table className="admin-table" style={{ margin: 0 }}>
-                <thead style={{ position: 'sticky', top: 0, background: 'white', zIndex: 10 }}>
-                  <tr>
-                    <th>Order ID</th>
-                    <th>Customer</th>
-                    <th>Product</th>
-                    <th>Amount</th>
-                    <th>Status</th>
-                    <th>Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>ORD-001</td>
-                    <td>Juan Dela Cruz</td>
-                    <td>Pili Nuts (250g)</td>
-                    <td>₱180.00</td>
-                    <td><span className="badge bg-warning">Pending</span></td>
-                    <td>2024-01-15</td>
-                  </tr>
-                  <tr>
-                    <td>ORD-002</td>
-                    <td>Maria Santos</td>
-                    <td>Handwoven Basket</td>
-                    <td>₱350.00</td>
-                    <td><span className="badge bg-success">Completed</span></td>
-                    <td>2024-01-14</td>
-                  </tr>
-                  <tr>
-                    <td>ORD-003</td>
-                    <td>Ana Rodriguez</td>
-                    <td>Coconut Vinegar</td>
-                    <td>₱95.00</td>
-                    <td><span className="badge bg-info">Shipped</span></td>
-                    <td>2024-01-13</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            {loadingOrders ? (
+              <div style={{ padding: '40px', textAlign: 'center' }}>
+                <div className="spinner-border spinner-border-sm text-success" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+                <p className="text-muted mt-2" style={{ fontSize: '14px' }}>Loading orders...</p>
+              </div>
+            ) : (
+              <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                <table className="admin-table" style={{ margin: 0 }}>
+                  <thead style={{ position: 'sticky', top: 0, background: 'white', zIndex: 10 }}>
+                    <tr>
+                      <th>Order ID</th>
+                      <th>Customer</th>
+                      <th>Product</th>
+                      <th>Amount</th>
+                      <th>Status</th>
+                      <th>Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredOrders.length > 0 ? (
+                      filteredOrders.map((order) => {
+                        // Get status badge color
+                        const getStatusBadge = (status) => {
+                          const statusLower = status.toLowerCase()
+                          if (statusLower === 'pending') return 'bg-warning'
+                          if (statusLower === 'processing') return 'bg-info'
+                          if (statusLower === 'shipped' || statusLower === 'in_transit') return 'bg-primary'
+                          if (statusLower === 'delivered') return 'bg-success'
+                          if (statusLower === 'completed') return 'bg-success'
+                          if (statusLower === 'cancelled') return 'bg-danger'
+                          return 'bg-secondary'
+                        }
+                        
+                        // Format status text
+                        const formatStatus = (status) => {
+                          const statusLower = status.toLowerCase()
+                          if (statusLower === 'in_transit') return 'Shipped'
+                          // Explicitly handle delivered status
+                          if (statusLower === 'delivered') return 'Delivered'
+                          if (statusLower === 'completed') return 'Completed'
+                          return status.charAt(0).toUpperCase() + status.slice(1)
+                        }
+                        
+                        return (
+                          <tr key={order.id}>
+                            <td>{order.order_number}</td>
+                            <td>{order.customer}</td>
+                            <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {order.product}
+                            </td>
+                            <td>₱{order.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td>
+                              <span className={`badge ${getStatusBadge(order.status)}`}>
+                                {formatStatus(order.status)}
+                              </span>
+                            </td>
+                            <td>{order.date}</td>
+                          </tr>
+                        )
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+                          <i className="bi bi-inbox" style={{ fontSize: '32px', display: 'block', marginBottom: '10px' }}></i>
+                          {orderStatusFilter === 'all' 
+                            ? 'No orders found'
+                            : `No ${orderStatusFilter} orders found`
+                          }
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
 
@@ -469,26 +706,37 @@ export default function AdminDashboardPage() {
             <h3 className="card-title">Best Selling Products</h3>
           </div>
           <div className="card-body" style={{ padding: '15px' }}>
-            <div className="d-flex justify-content-between align-items-center mb-2">
-              <span>Pili Nuts (250g)</span>
-              <span className="badge bg-success">45 sold</span>
-            </div>
-            <div className="d-flex justify-content-between align-items-center mb-2">
-              <span>Handwoven Basket</span>
-              <span className="badge bg-success">32 sold</span>
-            </div>
-            <div className="d-flex justify-content-between align-items-center mb-2">
-              <span>Coconut Vinegar</span>
-              <span className="badge bg-success">28 sold</span>
-            </div>
-            <div className="d-flex justify-content-between align-items-center mb-2">
-              <span>Abaca Bag</span>
-              <span className="badge bg-success">22 sold</span>
-            </div>
-            <div className="d-flex justify-content-between align-items-center">
-              <span>Organic Rice (5kg)</span>
-              <span className="badge bg-success">18 sold</span>
-            </div>
+            {loadingOrders ? (
+              <div style={{ textAlign: 'center', padding: '20px' }}>
+                <div className="spinner-border spinner-border-sm text-success" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+                <p className="text-muted mt-2" style={{ fontSize: '12px' }}>Loading...</p>
+              </div>
+            ) : bestSellingProducts.length > 0 ? (
+              bestSellingProducts.map((product, index) => (
+                <div key={index} className="d-flex justify-content-between align-items-center mb-2" style={{ 
+                  paddingBottom: index < bestSellingProducts.length - 1 ? '8px' : '0',
+                  borderBottom: index < bestSellingProducts.length - 1 ? '1px solid #eee' : 'none'
+                }}>
+                  <span style={{ 
+                    fontSize: '14px',
+                    maxWidth: '70%',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }} title={product.name}>
+                    {product.name}
+                  </span>
+                  <span className="badge bg-success">{product.count} sold</span>
+                </div>
+              ))
+            ) : (
+              <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
+                <i className="bi bi-inbox" style={{ fontSize: '24px', display: 'block', marginBottom: '8px' }}></i>
+                <p style={{ fontSize: '14px', margin: 0 }}>No products sold yet</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -535,23 +783,12 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', marginBottom: '20px' }}>
-            <div className="admin-card">
-              <div className="card-header">
-                <h3 className="card-title">Sales Revenue Trend</h3>
-              </div>
-              <div className="card-body">
-                <canvas ref={salesRef} style={{ maxHeight: '300px' }} />
-              </div>
+          <div className="admin-card" style={{ marginBottom: '20px' }}>
+            <div className="card-header">
+              <h3 className="card-title">Sales Revenue Trend</h3>
             </div>
-
-            <div className="admin-card">
-              <div className="card-header">
-                <h3 className="card-title">Products by Category</h3>
-              </div>
-              <div className="card-body">
-                <canvas ref={categoryRef} style={{ maxHeight: '300px' }} />
-              </div>
+            <div className="card-body">
+              <canvas ref={salesRef} style={{ maxHeight: '300px' }} />
             </div>
           </div>
 

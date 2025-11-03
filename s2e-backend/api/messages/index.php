@@ -99,12 +99,16 @@ if ($method === 'GET') {
                             s.business_name as seller_name,
                             s.owner_name as seller_owner_name,
                             u.first_name as customer_first_name,
-                            u.last_name as customer_last_name
+                            u.last_name as customer_last_name,
+                            CASE 
+                                WHEN m.sender_type = 'admin' OR m.receiver_type = 'admin' THEN 'admin'
+                                ELSE 'seller'
+                            END as partner_type
                      FROM messages m
                      LEFT JOIN sellers s ON (m.receiver_id = s.id AND m.receiver_type = 'seller')
                      LEFT JOIN users u ON (m.sender_id = u.id AND m.sender_type = 'user')
-                     WHERE ((m.sender_id = :user_id1 AND m.sender_type = 'user' AND m.receiver_id = :seller_id1 AND m.receiver_type = 'seller')
-                            OR (m.receiver_id = :user_id2 AND m.receiver_type = 'user' AND m.sender_id = :seller_id2 AND m.sender_type = 'seller'))
+                     WHERE ((m.sender_id = :user_id1 AND m.sender_type = 'user' AND m.receiver_id = :seller_id1 AND m.receiver_type IN ('seller', 'admin'))
+                            OR (m.receiver_id = :user_id2 AND m.receiver_type = 'user' AND m.sender_id = :seller_id2 AND m.sender_type IN ('seller', 'admin')))
                      ORDER BY m.created_at ASC";
             
             $stmt = $db->prepare($query);
@@ -121,13 +125,17 @@ if ($method === 'GET') {
                 'seller_id' => $sellerId
             ], 'Messages fetched successfully');
         } else {
-            // Get list of all conversations (grouped by seller)
+            // Get list of all conversations (grouped by seller or admin)
             // Use unique parameter names for each occurrence of user_id
             $query = "SELECT 
                             CASE 
                                 WHEN m.sender_id = :user_id1 AND m.sender_type = 'user' THEN m.receiver_id
                                 ELSE m.sender_id
                             END as seller_id,
+                            CASE 
+                                WHEN m.sender_id = :user_id12 AND m.sender_type = 'user' THEN m.receiver_type
+                                ELSE m.sender_type
+                            END as partner_type,
                             s.business_name as seller_name,
                             s.owner_name as seller_owner_name,
                             MAX(m.created_at) as last_message_time,
@@ -135,30 +143,37 @@ if ($method === 'GET') {
                              WHERE ((m2.sender_id = :user_id2 AND m2.sender_type = 'user' AND m2.receiver_id = CASE 
                                         WHEN m.sender_id = :user_id3 AND m.sender_type = 'user' THEN m.receiver_id
                                         ELSE m.sender_id
-                                    END AND m2.receiver_type = 'seller')
+                                    END AND m2.receiver_type IN ('seller', 'admin'))
                                 OR (m2.receiver_id = :user_id4 AND m2.receiver_type = 'user' AND m2.sender_id = CASE 
                                         WHEN m.sender_id = :user_id5 AND m.sender_type = 'user' THEN m.receiver_id
                                         ELSE m.sender_id
-                                    END AND m2.sender_type = 'seller'))
+                                    END AND m2.sender_type IN ('seller', 'admin')))
                              ORDER BY m2.created_at DESC LIMIT 1) as last_message,
                             (SELECT COUNT(*) FROM messages m3 
                              WHERE m3.receiver_id = :user_id6 AND m3.receiver_type = 'user' 
                              AND m3.sender_id = CASE 
                                         WHEN m.sender_id = :user_id7 AND m.sender_type = 'user' THEN m.receiver_id
                                         ELSE m.sender_id
-                                    END AND m3.sender_type = 'seller'
+                                    END AND m3.sender_type IN ('seller', 'admin')
                              AND m3.is_read = 0) as unread_count
                      FROM messages m
                      LEFT JOIN sellers s ON (CASE 
                                                 WHEN m.sender_id = :user_id8 AND m.sender_type = 'user' THEN m.receiver_id
                                                 ELSE m.sender_id
-                                            END = s.id)
-                     WHERE (m.sender_id = :user_id9 AND m.sender_type = 'user' AND m.receiver_type = 'seller')
-                        OR (m.receiver_id = :user_id10 AND m.receiver_type = 'user' AND m.sender_type = 'seller')
+                                            END = s.id AND (CASE 
+                                                WHEN m.sender_id = :user_id13 AND m.sender_type = 'user' THEN m.receiver_type
+                                                ELSE m.sender_type
+                                            END) = 'seller')
+                     WHERE ((m.sender_id = :user_id9 AND m.sender_type = 'user' AND m.receiver_type IN ('seller', 'admin'))
+                        OR (m.receiver_id = :user_id10 AND m.receiver_type = 'user' AND m.sender_type IN ('seller', 'admin')))
                      GROUP BY 
                         CASE 
                             WHEN m.sender_id = :user_id11 AND m.sender_type = 'user' THEN m.receiver_id
                             ELSE m.sender_id
+                        END,
+                        CASE 
+                            WHEN m.sender_id = :user_id14 AND m.sender_type = 'user' THEN m.receiver_type
+                            ELSE m.sender_type
                         END,
                         s.business_name, 
                         s.owner_name
@@ -178,6 +193,9 @@ if ($method === 'GET') {
             $stmt->bindValue(':user_id9', $userId, PDO::PARAM_INT);
             $stmt->bindValue(':user_id10', $userId, PDO::PARAM_INT);
             $stmt->bindValue(':user_id11', $userId, PDO::PARAM_INT);
+            $stmt->bindValue(':user_id12', $userId, PDO::PARAM_INT);
+            $stmt->bindValue(':user_id13', $userId, PDO::PARAM_INT);
+            $stmt->bindValue(':user_id14', $userId, PDO::PARAM_INT);
             $stmt->execute();
             
             $conversations = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -186,6 +204,69 @@ if ($method === 'GET') {
                 'conversations' => $conversations
             ], 'Conversations fetched successfully');
         }
+    } elseif ($user['user_type'] === 'admin') {
+        // Admin: Get all messages (sent and received)
+        // For admin messages page, return all messages where admin is sender or receiver
+        $query = "SELECT 
+                    m.*,
+                    CASE 
+                        WHEN m.sender_type = 'admin' THEN m.receiver_id
+                        ELSE m.sender_id
+                    END as partner_id,
+                    CASE 
+                        WHEN m.sender_type = 'admin' THEN m.receiver_type
+                        ELSE m.sender_type
+                    END as partner_type,
+                    CASE 
+                        WHEN m.sender_type = 'admin' THEN 'sent'
+                        ELSE 'received'
+                    END as message_type,
+                    u.first_name as user_first_name,
+                    u.last_name as user_last_name,
+                    u.email as user_email,
+                    s.business_name as seller_business_name,
+                    s.owner_name as seller_owner_name,
+                    s.email as seller_email,
+                    CASE 
+                        WHEN m.sender_type = 'admin' AND m.receiver_type = 'user' THEN TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, '')))
+                        WHEN m.sender_type = 'admin' AND m.receiver_type = 'seller' THEN COALESCE(s.business_name, s.owner_name, s.email, 'Seller')
+                        WHEN m.sender_type = 'user' THEN TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, '')))
+                        WHEN m.sender_type = 'seller' THEN COALESCE(s.business_name, s.owner_name, s.email, 'Seller')
+                        ELSE 'Unknown'
+                    END as partner_name,
+                    CASE 
+                        WHEN m.sender_type = 'user' THEN 'Customer'
+                        WHEN m.sender_type = 'seller' THEN 'Seller'
+                        WHEN m.receiver_type = 'user' THEN 'Customer'
+                        WHEN m.receiver_type = 'seller' THEN 'Seller'
+                        ELSE 'Admin'
+                    END as partner_role,
+                    m.is_read as is_read_status
+                  FROM messages m
+                  LEFT JOIN users u ON (
+                    (m.sender_id = u.id AND m.sender_type = 'user') OR 
+                    (m.receiver_id = u.id AND m.receiver_type = 'user')
+                  )
+                  LEFT JOIN sellers s ON (
+                    (m.sender_id = s.id AND m.sender_type = 'seller') OR 
+                    (m.receiver_id = s.id AND m.receiver_type = 'seller')
+                  )
+                  WHERE (m.sender_id = :admin_id AND m.sender_type = 'admin')
+                     OR (m.receiver_id = :admin_id2 AND m.receiver_type = 'admin')
+                  ORDER BY m.created_at DESC
+                  LIMIT 1000";
+        
+        $stmt = $db->prepare($query);
+        $adminId = $user['id'];
+        $stmt->bindValue(':admin_id', $adminId, PDO::PARAM_INT);
+        $stmt->bindValue(':admin_id2', $adminId, PDO::PARAM_INT);
+        $stmt->execute();
+        
+        $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        Response::success([
+            'messages' => $messages
+        ], 'Messages fetched successfully');
     } elseif ($user['user_type'] === 'seller') {
         // Seller: Get all conversations with customers
         $customerId = $_GET['customer_id'] ?? null;
@@ -196,12 +277,16 @@ if ($method === 'GET') {
             $query = "SELECT m.*, 
                             s.business_name as seller_name,
                             u.first_name as customer_first_name,
-                            u.last_name as customer_last_name
+                            u.last_name as customer_last_name,
+                            CASE 
+                                WHEN m.sender_type = 'admin' OR m.receiver_type = 'admin' THEN 'admin'
+                                ELSE 'user'
+                            END as partner_type
                      FROM messages m
                      LEFT JOIN sellers s ON (m.sender_id = s.id AND m.sender_type = 'seller')
                      LEFT JOIN users u ON (m.receiver_id = u.id AND m.receiver_type = 'user')
-                     WHERE ((m.sender_id = :seller_id1 AND m.sender_type = 'seller' AND m.receiver_id = :customer_id1 AND m.receiver_type = 'user')
-                            OR (m.receiver_id = :seller_id2 AND m.receiver_type = 'seller' AND m.sender_id = :customer_id2 AND m.sender_type = 'user'))
+                     WHERE ((m.sender_id = :seller_id1 AND m.sender_type = 'seller' AND m.receiver_id = :customer_id1 AND m.receiver_type IN ('user', 'admin'))
+                            OR (m.receiver_id = :seller_id2 AND m.receiver_type = 'seller' AND m.sender_id = :customer_id2 AND m.sender_type IN ('user', 'admin')))
                      ORDER BY m.created_at ASC";
             
             $stmt = $db->prepare($query);
@@ -220,35 +305,42 @@ if ($method === 'GET') {
                 'customer_id' => $customerId
             ], 'Messages fetched successfully');
         } else {
-            // Get list of all conversations (grouped by customer)
+            // Get list of all conversations (grouped by customer or admin)
             // Use unique parameter names for each occurrence of seller_id
             $query = "SELECT DISTINCT
                             CASE 
                                 WHEN m.sender_id = :seller_id1 AND m.sender_type = 'seller' THEN m.receiver_id
                                 ELSE m.sender_id
                             END as customer_id,
+                            CASE 
+                                WHEN m.sender_id = :seller_id10 AND m.sender_type = 'seller' THEN m.receiver_type
+                                ELSE m.sender_type
+                            END as partner_type,
                             u.first_name as customer_first_name,
                             u.last_name as customer_last_name,
                             (SELECT message FROM messages m2 
-                             WHERE (m2.sender_id = :seller_id2 AND m2.sender_type = 'seller' AND m2.receiver_id = customer_id AND m2.receiver_type = 'user')
-                                OR (m2.receiver_id = :seller_id3 AND m2.receiver_type = 'seller' AND m2.sender_id = customer_id AND m2.sender_type = 'user')
+                             WHERE ((m2.sender_id = :seller_id2 AND m2.sender_type = 'seller' AND m2.receiver_id = customer_id AND m2.receiver_type IN ('user', 'admin'))
+                                OR (m2.receiver_id = :seller_id3 AND m2.receiver_type = 'seller' AND m2.sender_id = customer_id AND m2.sender_type IN ('user', 'admin')))
                              ORDER BY m2.created_at DESC LIMIT 1) as last_message,
                             (SELECT created_at FROM messages m2 
-                             WHERE (m2.sender_id = :seller_id4 AND m2.sender_type = 'seller' AND m2.receiver_id = customer_id AND m2.receiver_type = 'user')
-                                OR (m2.receiver_id = :seller_id5 AND m2.receiver_type = 'seller' AND m2.sender_id = customer_id AND m2.sender_type = 'user')
+                             WHERE ((m2.sender_id = :seller_id4 AND m2.sender_type = 'seller' AND m2.receiver_id = customer_id AND m2.receiver_type IN ('user', 'admin'))
+                                OR (m2.receiver_id = :seller_id5 AND m2.receiver_type = 'seller' AND m2.sender_id = customer_id AND m2.sender_type IN ('user', 'admin')))
                              ORDER BY m2.created_at DESC LIMIT 1) as last_message_time,
                             (SELECT COUNT(*) FROM messages m2 
                              WHERE m2.receiver_id = :seller_id6 AND m2.receiver_type = 'seller' 
-                             AND m2.sender_id = customer_id AND m2.sender_type = 'user'
+                             AND m2.sender_id = customer_id AND m2.sender_type IN ('user', 'admin')
                              AND m2.is_read = 0) as unread_count
                      FROM messages m
                      LEFT JOIN users u ON (CASE 
                                                 WHEN m.sender_id = :seller_id7 AND m.sender_type = 'seller' THEN m.receiver_id
                                                 ELSE m.sender_id
-                                            END = u.id)
-                     WHERE (m.sender_id = :seller_id8 AND m.sender_type = 'seller' AND m.receiver_type = 'user')
-                        OR (m.receiver_id = :seller_id9 AND m.receiver_type = 'seller' AND m.sender_type = 'user')
-                     GROUP BY customer_id, u.first_name, u.last_name
+                                            END = u.id AND (CASE 
+                                                WHEN m.sender_id = :seller_id11 AND m.sender_type = 'seller' THEN m.receiver_type
+                                                ELSE m.sender_type
+                                            END) = 'user')
+                     WHERE ((m.sender_id = :seller_id8 AND m.sender_type = 'seller' AND m.receiver_type IN ('user', 'admin'))
+                        OR (m.receiver_id = :seller_id9 AND m.receiver_type = 'seller' AND m.sender_type IN ('user', 'admin')))
+                     GROUP BY customer_id, partner_type, u.first_name, u.last_name
                      ORDER BY last_message_time DESC";
             
             $stmt = $db->prepare($query);
@@ -263,6 +355,8 @@ if ($method === 'GET') {
             $stmt->bindValue(':seller_id7', $sellerId, PDO::PARAM_INT);
             $stmt->bindValue(':seller_id8', $sellerId, PDO::PARAM_INT);
             $stmt->bindValue(':seller_id9', $sellerId, PDO::PARAM_INT);
+            $stmt->bindValue(':seller_id10', $sellerId, PDO::PARAM_INT);
+            $stmt->bindValue(':seller_id11', $sellerId, PDO::PARAM_INT);
             $stmt->execute();
             
             $conversations = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -336,12 +430,16 @@ if ($method === 'GET') {
     $senderType = $user['user_type'];
     $senderId = $user['id'];
     
-    // Validate that user is sending to appropriate receiver
-    if ($senderType === 'user' && $receiverType !== 'seller') {
-        Response::error('Users can only message sellers', 403);
-    }
-    if ($senderType === 'seller' && $receiverType !== 'user') {
-        Response::error('Sellers can only message users', 403);
+    // Validate that user is sending to appropriate receiver (admins can message anyone)
+    // Users can message sellers or admin (for support)
+    // Sellers can message users or admin (for support)
+    if ($senderType !== 'admin') {
+        if ($senderType === 'user' && !in_array($receiverType, ['seller', 'admin'])) {
+            Response::error('Users can only message sellers or admin support', 403);
+        }
+        if ($senderType === 'seller' && !in_array($receiverType, ['user', 'admin'])) {
+            Response::error('Sellers can only message users or admin support', 403);
+        }
     }
     
     // Handle image upload if present
@@ -454,7 +552,7 @@ if ($method === 'GET') {
     $customerId = $data['customer_id'] ?? null;
     
     if ($user['user_type'] === 'user' && $sellerId) {
-        // Customer marking messages from a seller as read
+        // Customer marking messages from a seller or admin as read
         $sellerIdInt = (int)$sellerId;
         $userIdInt = (int)$user['id'];
         
@@ -464,7 +562,7 @@ if ($method === 'GET') {
                            WHERE receiver_id = :user_id 
                            AND receiver_type = 'user' 
                            AND sender_id = :seller_id 
-                           AND sender_type = 'seller' 
+                           AND sender_type IN ('seller', 'admin')
                            AND is_read = 0";
             
             $updateStmt = $db->prepare($updateQuery);
@@ -482,7 +580,7 @@ if ($method === 'GET') {
             Response::error('Failed to mark messages as read', 500);
         }
     } elseif ($user['user_type'] === 'seller' && $customerId) {
-        // Seller marking messages from a customer as read
+        // Seller marking messages from a customer or admin as read
         $customerIdInt = (int)$customerId;
         $sellerIdInt = (int)$user['id'];
         
@@ -492,7 +590,7 @@ if ($method === 'GET') {
                            WHERE receiver_id = :seller_id 
                            AND receiver_type = 'seller' 
                            AND sender_id = :customer_id 
-                           AND sender_type = 'user' 
+                           AND sender_type IN ('user', 'admin')
                            AND is_read = 0";
             
             $updateStmt = $db->prepare($updateQuery);

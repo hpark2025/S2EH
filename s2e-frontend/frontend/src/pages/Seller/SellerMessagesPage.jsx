@@ -73,17 +73,27 @@ export default function SellerMessagesPage() {
       
       if (response.conversations) {
         // Map backend data to frontend format
-        const mappedConversations = response.conversations.map(conv => ({
-          customer_id: conv.customer_id,
-          name: conv.customer_first_name && conv.customer_last_name
+        const mappedConversations = response.conversations.map(conv => {
+          // Check if conversation is with admin
+          const isAdmin = conv.partner_type === 'admin'
+          const displayName = isAdmin ? 'Admin Support' : (conv.customer_first_name && conv.customer_last_name
             ? `${conv.customer_first_name} ${conv.customer_last_name}`
-            : 'Customer',
-          avatar: getInitials(conv.customer_first_name, conv.customer_last_name),
-          lastMessage: conv.last_message || 'No messages yet',
-          lastMessageTime: formatTime(conv.last_message_time),
-          unreadCount: parseInt(conv.unread_count) || 0,
-          status: 'offline' // Can be enhanced later with real-time status
-        }))
+            : 'Customer')
+          const avatarName = isAdmin ? 'Admin Support' : (conv.customer_first_name && conv.customer_last_name
+            ? `${conv.customer_first_name} ${conv.customer_last_name}`
+            : 'Customer')
+          
+          return {
+            customer_id: conv.customer_id,
+            name: displayName,
+            avatar: getInitials(isAdmin ? 'Admin Support' : conv.customer_first_name, isAdmin ? '' : conv.customer_last_name),
+            lastMessage: conv.last_message || 'No messages yet',
+            lastMessageTime: formatTime(conv.last_message_time),
+            unreadCount: parseInt(conv.unread_count) || 0,
+            status: 'offline', // Can be enhanced later with real-time status
+            partner_type: conv.partner_type || 'user'
+          }
+        })
         
         setConversations(mappedConversations)
       }
@@ -124,6 +134,10 @@ export default function SellerMessagesPage() {
   }
 
   const getInitials = (firstName, lastName) => {
+    // Handle "Admin Support" case
+    if (firstName === 'Admin Support') {
+      return 'AS'
+    }
     const first = firstName ? firstName.charAt(0).toUpperCase() : 'C'
     const last = lastName ? lastName.charAt(0).toUpperCase() : ''
     return first + last
@@ -239,13 +253,14 @@ export default function SellerMessagesPage() {
     
     const messageText = messageInput.trim()
     const customerId = currentConversation.customer_id
+    const partnerType = currentConversation.partner_type || 'user'
     
     try {
       setSending(true)
       
       const messageData = {
         receiver_id: parseInt(customerId, 10),
-        receiver_type: 'user',
+        receiver_type: partnerType === 'admin' ? 'admin' : 'user',
         message: messageText || '' // Allow empty message if image is attached
       }
       
@@ -485,22 +500,24 @@ export default function SellerMessagesPage() {
                     </small>
                   </div>
                 </div>
-                <div className="d-flex gap-2">
-                  <button 
-                    className="btn btn-outline-secondary btn-sm"
-                    onClick={handleShowCustomerDetails}
-                  >
-                    <i className="bi bi-person"></i>
-                    Details
-                  </button>
-                  <button 
-                    className="btn btn-outline-primary btn-sm"
-                    onClick={handleShowOrderQuickLook}
-                  >
-                    <i className="bi bi-cart"></i>
-                    Orders
-                  </button>
-                </div>
+                {currentConversation.partner_type !== 'admin' && (
+                  <div className="d-flex gap-2">
+                    <button 
+                      className="btn btn-outline-secondary btn-sm"
+                      onClick={handleShowCustomerDetails}
+                    >
+                      <i className="bi bi-person"></i>
+                      Details
+                    </button>
+                    <button 
+                      className="btn btn-outline-primary btn-sm"
+                      onClick={handleShowOrderQuickLook}
+                    >
+                      <i className="bi bi-cart"></i>
+                      Orders
+                    </button>
+                  </div>
+                )}
               </div>
               
               {/* Chat Body */}
@@ -654,7 +671,7 @@ export default function SellerMessagesPage() {
             <div className="empty-chat">
               <i className="bi bi-chat-dots fs-1 text-muted mb-3"></i>
               <h5 className="text-muted">Select a conversation to start messaging</h5>
-              <p className="text-muted">Choose a customer from the list to view your conversation history</p>
+              <p className="text-muted">Choose a conversation from the list to view your message history</p>
             </div>
           )}
         </div>

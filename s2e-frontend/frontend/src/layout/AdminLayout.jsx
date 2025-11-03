@@ -60,8 +60,7 @@ export default function AdminLayout() {
       '/admin/orders': 'Orders Management',
       '/admin/users': 'Users Management',
       '/admin/producers': 'Producers Management',
-      '/admin/messages': 'Messages',
-      '/admin/reports': 'Reports & Analytics'
+      '/admin/messages': 'Messages'
     }
     return titleMap[path] || 'Admin Panel'
   }

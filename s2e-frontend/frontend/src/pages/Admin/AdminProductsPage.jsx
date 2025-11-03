@@ -25,7 +25,6 @@ const exportToExcel = (data, filename = 'products') => {
       'Product ID': product.id,
       'Product Name': product.name,
       'Producer': product.producer,
-      'Category': product.category,
       'Price': `₱${product.price}`,
       'Stock': `${product.stock} pcs`,
       'Status': product.status,
@@ -50,7 +49,6 @@ const exportToCSV = (data, filename = 'products') => {
       'Product ID': product.id,
       'Product Name': product.name,
       'Producer': product.producer,
-      'Category': product.category,
       'Price': `₱${product.price}`,
       'Stock': `${product.stock} pcs`,
       'Status': product.status,
@@ -95,7 +93,6 @@ const exportToPDF = (data, filename = 'products') => {
       product.id,
       product.name,
       product.producer,
-      product.category,
       `₱${product.price}`,
       `${product.stock} pcs`,
       product.status,
@@ -105,7 +102,7 @@ const exportToPDF = (data, filename = 'products') => {
     // Add table using autoTable
     if (doc.autoTable) {
       doc.autoTable({
-        head: [['ID', 'Product Name', 'Producer', 'Category', 'Price', 'Stock', 'Status', 'LGU Verified']],
+        head: [['ID', 'Product Name', 'Producer', 'Price', 'Stock', 'Status', 'LGU Verified']],
         body: tableData,
         startY: 40,
         styles: { fontSize: 8 },
@@ -118,7 +115,7 @@ const exportToPDF = (data, filename = 'products') => {
       doc.setFontSize(8)
       
       // Add header
-      const headers = ['ID', 'Product Name', 'Producer', 'Category', 'Price', 'Stock', 'Status', 'LGU Verified']
+      const headers = ['ID', 'Product Name', 'Producer', 'Price', 'Stock', 'Status', 'LGU Verified']
       let xPosition = 14
       headers.forEach(header => {
         doc.text(header, xPosition, yPosition)
@@ -155,10 +152,10 @@ const exportToPDF = (data, filename = 'products') => {
 const copyToClipboard = (data) => {
   try {
     const tableText = data.map(product => 
-      `${product.id}\t${product.name}\t${product.producer}\t${product.category}\t₱${product.price}\t${product.stock} pcs\t${product.status}\t${product.lguVerified ? 'Verified' : 'Pending'}`
+      `${product.id}\t${product.name}\t${product.producer}\t₱${product.price}\t${product.stock} pcs\t${product.status}\t${product.lguVerified ? 'Verified' : 'Pending'}`
     ).join('\n')
     
-    const header = 'Product ID\tProduct Name\tProducer\tCategory\tPrice\tStock\tStatus\tLGU Verified\n'
+    const header = 'Product ID\tProduct Name\tProducer\tPrice\tStock\tStatus\tLGU Verified\n'
     const fullText = header + tableText
     
     navigator.clipboard.writeText(fullText).then(() => {
@@ -181,7 +178,6 @@ const printTable = (data) => {
         <td>${product.id}</td>
         <td>${product.name}</td>
         <td>${product.producer}</td>
-        <td>${product.category}</td>
         <td>₱${product.price}</td>
         <td>${product.stock} pcs</td>
         <td>${product.status}</td>
@@ -217,7 +213,6 @@ const printTable = (data) => {
               <th>Product ID</th>
               <th>Product Name</th>
               <th>Producer</th>
-              <th>Category</th>
               <th>Price</th>
               <th>Stock</th>
               <th>Status</th>
@@ -317,12 +312,22 @@ export default function AdminProductsPage() {
   const [showCategorizeModal, setShowCategorizeModal] = useState(false)
 
   const filteredProducts = useMemo(() => {
+    if (!searchTerm || searchTerm.trim() === '') {
+      // If no search term, return all products filtered by status only
+      return products.filter(product => {
+        return selectedStatus === 'all' || product.status === selectedStatus
+      })
+    }
+    
+    const searchLower = searchTerm.toLowerCase().trim()
+    
     return products.filter(product => {
       const matchesSearch = 
-        String(product.id).includes(searchTerm.toLowerCase()) ||
-        (product.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (product.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (product.seller_name || '').toLowerCase().includes(searchTerm.toLowerCase())
+        String(product.id).includes(searchLower) ||
+        (product.name || '').toLowerCase().includes(searchLower) ||
+        (product.description || '').toLowerCase().includes(searchLower) ||
+        (product.producer || '').toLowerCase().includes(searchLower) ||
+        (product.category || '').toLowerCase().includes(searchLower)
       
       const matchesStatus = selectedStatus === 'all' || product.status === selectedStatus
       
@@ -724,7 +729,6 @@ export default function AdminProductsPage() {
               <tr>
                 <th>Product</th>
                 <th>Producer</th>
-                <th>Category</th>
                 <th>Price</th>
                 <th>Stock</th>
                 <th>Status</th>
@@ -763,7 +767,6 @@ export default function AdminProductsPage() {
                     </div>
                   </td>
                   <td>{product.producer}</td>
-                  <td>{product.category}</td>
                   <td>{formatCurrency(product.price)}</td>
                   <td>{product.stock} pcs</td>
                   <td>{getStatusBadge(product.status)}</td>

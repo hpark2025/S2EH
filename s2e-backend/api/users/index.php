@@ -77,7 +77,7 @@ try {
     $countStmt->execute($params);
     $totalCount = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
     
-    // Get users with address information
+    // Get users with address information, orders count, and total spent
     $query = "
         SELECT 
             u.id,
@@ -93,7 +93,17 @@ try {
             u.last_login,
             a.province,
             a.municipality,
-            a.barangay
+            a.barangay,
+            COALESCE((
+                SELECT COUNT(*)
+                FROM orders
+                WHERE user_id = u.id
+            ), 0) as orders_count,
+            COALESCE((
+                SELECT SUM(total)
+                FROM orders
+                WHERE user_id = u.id
+            ), 0) as total_spent
         FROM users u
         LEFT JOIN addresses a ON u.id = a.user_id AND a.address_type = 'shipping'
         $whereClause

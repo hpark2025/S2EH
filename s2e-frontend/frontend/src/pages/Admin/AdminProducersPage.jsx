@@ -350,26 +350,42 @@ const AdminProducersPage = () => {
   }, [activeTab])
 
   const filteredProducers = useMemo(() => {
+    if (!searchTerm || searchTerm.trim() === '') {
+      // If no search term, return all producers filtered by tab only
+      return producers.filter(producer => {
+        const status = producer.status || 'pending'
+        const matchesTab = activeTab === 'all' || 
+          (activeTab === 'approved' && (status === 'active' || status === 'approved')) ||
+          (activeTab === 'pending' && status === 'pending') ||
+          (activeTab === 'suspended' && status === 'suspended')
+        return matchesTab
+      })
+    }
+    
+    const searchLower = searchTerm.toLowerCase().trim()
+    
     let filtered = producers.filter(producer => {
-      // Safely handle different possible data structures
-      const name = `${producer.firstName || ''} ${producer.lastName || ''}`.trim() || 'Unknown Producer'
+      // Primary search: seller name (business_name or owner_name)
+      const sellerName = producer.businessName || producer.business_name || 
+                        producer.ownerName || producer.owner_name ||
+                        `${producer.firstName || ''} ${producer.lastName || ''}`.trim() || 
+                        'Unknown Producer'
       const email = producer.email || 'N/A'
       const category = producer.businessType || 'Local Producer'
       const location = [producer.barangay, producer.municipality, producer.province]
         .filter(Boolean)
         .join(', ') || 'N/A'
       const status = producer.status || 'pending'
-      console.log('Filtering producer:', { id: producer.id, status, activeTab })
 
-      // Perform case-insensitive search
+      // Perform case-insensitive search - prioritize seller name
       const matchesSearch = 
-        name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        location.toLowerCase().includes(searchTerm.toLowerCase())
+        sellerName.toLowerCase().includes(searchLower) ||
+        email.toLowerCase().includes(searchLower) ||
+        category.toLowerCase().includes(searchLower) ||
+        location.toLowerCase().includes(searchLower)
       
       const matchesTab = activeTab === 'all' || 
-        (activeTab === 'approved' && (status === 'active' || status === 'approved')) ||  // Show both active and approved users
+        (activeTab === 'approved' && (status === 'active' || status === 'approved')) ||
         (activeTab === 'pending' && status === 'pending') ||
         (activeTab === 'suspended' && status === 'suspended')
       

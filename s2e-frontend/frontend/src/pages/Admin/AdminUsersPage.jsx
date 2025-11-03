@@ -356,27 +356,67 @@ export default function AdminUsersPage() {
       
       const usersData = response.data?.users || response.users || [];
       
-      const transformedUsers = usersData.map(user => ({
-        id: user.id,
-        name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'N/A',
-        firstName: user.first_name,
-        lastName: user.last_name,
-        email: user.email,
-        phone: user.phone || 'N/A',
-        role: user.role || 'Customer',
-        location: [user.barangay, user.municipality, user.province].filter(Boolean).join(', ') || 'N/A',
-        barangay: user.barangay,
-        municipality: user.municipality,
-        province: user.province,
-        orders: 0, // TODO: Implement order count
-        totalSpent: 0, // TODO: Implement total spent
-        lastActive: user.last_login ? new Date(user.last_login).toLocaleDateString() : 'Never',
-        status: user.status || 'active',
-        dateJoined: user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A',
-        emailVerified: user.email_verified || false,
-        profileImage: user.profile_image || null,
-        createdAt: user.created_at
-      }));
+      const transformedUsers = usersData.map(user => {
+        // Calculate avatar initials
+        const firstName = user.first_name || ''
+        const lastName = user.last_name || ''
+        const avatar = firstName && lastName 
+          ? `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
+          : firstName 
+            ? firstName.charAt(0).toUpperCase()
+            : lastName 
+              ? lastName.charAt(0).toUpperCase()
+              : 'U'
+        
+        // Format last active date
+        let lastActive = 'Never'
+        if (user.last_login) {
+          const lastLoginDate = new Date(user.last_login)
+          const now = new Date()
+          const diffTime = Math.abs(now - lastLoginDate)
+          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+          
+          if (diffDays === 0) {
+            lastActive = 'Today'
+          } else if (diffDays === 1) {
+            lastActive = 'Yesterday'
+          } else if (diffDays < 7) {
+            lastActive = `${diffDays} days ago`
+          } else if (diffDays < 30) {
+            const weeks = Math.floor(diffDays / 7)
+            lastActive = `${weeks} week${weeks > 1 ? 's' : ''} ago`
+          } else {
+            lastActive = lastLoginDate.toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'short', 
+              day: 'numeric' 
+            })
+          }
+        }
+        
+        return {
+          id: user.id,
+          name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'N/A',
+          firstName: user.first_name,
+          lastName: user.last_name,
+          email: user.email,
+          phone: user.phone || 'N/A',
+          role: user.role || 'Customer',
+          location: [user.barangay, user.municipality, user.province].filter(Boolean).join(', ') || 'N/A',
+          barangay: user.barangay,
+          municipality: user.municipality,
+          province: user.province,
+          orders: parseInt(user.orders_count || 0),
+          totalSpent: parseFloat(user.total_spent || 0),
+          lastActive: lastActive,
+          status: user.status || 'active',
+          dateJoined: user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A',
+          emailVerified: user.email_verified || false,
+          profileImage: user.profile_image || null,
+          createdAt: user.created_at,
+          avatar: avatar
+        }
+      });
       
       console.log(`✅ Loaded ${transformedUsers.length} users`);
       setUsers(transformedUsers);
@@ -396,12 +436,23 @@ export default function AdminUsersPage() {
   }, [selectedStatus])
 
   const filteredUsers = useMemo(() => {
+    if (!searchTerm || searchTerm.trim() === '') {
+      // If no search term, return all users filtered by status only
+      return users.filter(user => {
+        return selectedStatus === 'all' || user.status === selectedStatus
+      })
+    }
+    
+    const searchLower = searchTerm.toLowerCase().trim()
+    
     return users.filter(user => {
+      // Primary search: customer name (first name + last name)
+      const fullName = user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim()
       const matchesSearch = 
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.location?.toLowerCase().includes(searchTerm.toLowerCase())
+        fullName.toLowerCase().includes(searchLower) ||
+        (user.email || '').toLowerCase().includes(searchLower) ||
+        (user.phone || '').toLowerCase().includes(searchLower) ||
+        (user.location || '').toLowerCase().includes(searchLower)
       
       const matchesStatus = selectedStatus === 'all' || user.status === selectedStatus
       

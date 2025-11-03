@@ -39,7 +39,6 @@ import UserSellerProfilePage from './pages/User/UserSellerProfilePage.jsx'
 import UserChatPage from './pages/User/UserChatPage.jsx'
 import UserCheckoutPage from './pages/User/UserCheckoutPage.jsx'
 import AdminMessagesPage from './pages/Admin/AdminMessagesPage.jsx'
-import AdminReportsPage from './pages/Admin/AdminReportsPage.jsx'
 import AdminLoginPage from './pages/Admin/AdminLoginPage.jsx'
 
 function App() {
@@ -115,7 +114,6 @@ function App() {
           <Route path="users" element={<AdminUsersPage />} />
           <Route path="producers" element={<AdminProducersPage />} />
           <Route path="messages" element={<AdminMessagesPage />} />
-          <Route path="reports" element={<AdminReportsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

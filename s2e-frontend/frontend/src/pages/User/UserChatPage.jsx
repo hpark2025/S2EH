@@ -80,16 +80,24 @@ export default function UserChatPage() {
       
       if (response.conversations) {
         // Map backend data to frontend format
-        const mappedConversations = response.conversations.map(conv => ({
-          seller_id: conv.seller_id,
-          name: conv.seller_name || conv.seller_owner_name || 'Seller',
-          ownerName: conv.seller_owner_name,
-          avatar: getInitials(conv.seller_name || conv.seller_owner_name || 'Seller'),
-          lastMessage: conv.last_message || 'No messages yet',
-          lastMessageTime: formatTime(conv.last_message_time),
-          unreadCount: parseInt(conv.unread_count) || 0,
-          status: 'offline' // Can be enhanced later with real-time status
-        }))
+        const mappedConversations = response.conversations.map(conv => {
+          // Check if conversation is with admin
+          const isAdmin = conv.partner_type === 'admin'
+          const displayName = isAdmin ? 'Admin Support' : (conv.seller_name || conv.seller_owner_name || 'Seller')
+          const avatarName = isAdmin ? 'Admin Support' : (conv.seller_name || conv.seller_owner_name || 'Seller')
+          
+          return {
+            seller_id: conv.seller_id,
+            name: displayName,
+            ownerName: conv.seller_owner_name,
+            avatar: getInitials(avatarName),
+            lastMessage: conv.last_message || 'No messages yet',
+            lastMessageTime: formatTime(conv.last_message_time),
+            unreadCount: parseInt(conv.unread_count) || 0,
+            status: 'offline', // Can be enhanced later with real-time status
+            partner_type: conv.partner_type || 'seller'
+          }
+        })
         
         setConversations(mappedConversations)
       }
@@ -248,13 +256,14 @@ export default function UserChatPage() {
     
     const messageText = messageInput.trim()
     const sellerId = currentConversation.seller_id
+    const partnerType = currentConversation.partner_type || 'seller'
     
     try {
       setSending(true)
       
       const messageData = {
         receiver_id: parseInt(sellerId, 10),
-        receiver_type: 'seller',
+        receiver_type: partnerType === 'admin' ? 'admin' : 'seller',
         message: messageText || '' // Allow empty message if image is attached
       }
       

@@ -1,4 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { adminAPI } from '../../services/adminAPI'
+import { messagesAPI } from '../../services/messagesAPI'
 
 const AdminMessagesPage = () => {
   const [searchTerm, setSearchTerm] = useState('')
@@ -13,20 +15,130 @@ const AdminMessagesPage = () => {
   const [composeForm, setComposeForm] = useState({
     recipient: '',
     subject: '',
+    message: '',
+    specificUser: ''
+  })
+
+  // Reply form state
+  const [replyForm, setReplyForm] = useState({
+    subject: '',
     message: ''
   })
+  
+  const [sendingReply, setSendingReply] = useState(false)
+  const [replyError, setReplyError] = useState(null)
+  const [replySuccess, setReplySuccess] = useState(false)
 
   // Filter state
   const [messageTypeFilter, setMessageTypeFilter] = useState('all')
   const [dateRangeFilter, setDateRangeFilter] = useState('all')
 
-  const mockMessages = []
+  // Users and sellers lists for dropdown
+  const [usersList, setUsersList] = useState([])
+  const [sellersList, setSellersList] = useState([])
+  const [loadingRecipients, setLoadingRecipients] = useState(false)
+  
+  // Message sending state
+  const [sendingMessage, setSendingMessage] = useState(false)
+  const [sendMessageError, setSendMessageError] = useState(null)
+  const [sendMessageSuccess, setSendMessageSuccess] = useState(false)
+
+  // Messages state
+  const [messages, setMessages] = useState([])
+  const [loadingMessages, setLoadingMessages] = useState(true)
+
+  // Fetch messages on mount
+  useEffect(() => {
+    loadMessages()
+  }, [])
+
+  // Load messages from API
+  const loadMessages = async () => {
+    try {
+      setLoadingMessages(true)
+      const response = await messagesAPI.getConversations()
+      
+      // Admin messages API returns messages array directly
+      const messagesData = response.messages || response.data?.messages || []
+      
+      // Transform backend messages to frontend format
+      const transformedMessages = messagesData.map(msg => {
+        const partnerName = msg.partner_name || 'Unknown'
+        const partnerRole = msg.partner_role || 'Unknown'
+        const isSent = msg.message_type === 'sent'
+        const isReceived = msg.message_type === 'received'
+        const isRead = parseInt(msg.is_read_status || msg.is_read || 0) === 1
+        
+        // Get initials for avatar
+        const getInitials = (name) => {
+          if (!name || name === 'Unknown') return 'U'
+          const words = name.split(' ')
+          if (words.length >= 2) {
+            return (words[0][0] + words[1][0]).toUpperCase()
+          }
+          return name.charAt(0).toUpperCase()
+        }
+
+        // Format date
+        const formatDate = (dateString) => {
+          if (!dateString) return ''
+          const date = new Date(dateString)
+          const now = new Date()
+          const diff = now - date
+          
+          if (diff < 60000) return 'Just now'
+          if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
+          if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
+          if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`
+          return date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
+        }
+
+        // Get message preview (first 50 chars)
+        const preview = (msg.message || msg.subject || '').substring(0, 50) + ((msg.message || msg.subject || '').length > 50 ? '...' : '')
+
+        return {
+          id: msg.id,
+          type: isSent ? 'sent' : 'received',
+          fromTo: {
+            name: partnerName,
+            role: partnerRole,
+            avatar: getInitials(partnerName)
+          },
+          subject: msg.subject || '(No subject)',
+          preview: preview,
+          date: formatDate(msg.created_at),
+          status: isRead ? 'read' : 'unread',
+          content: msg.message || '',
+          partner_id: msg.partner_id,
+          partner_type: msg.partner_type,
+          created_at: msg.created_at,
+          original: msg
+        }
+      })
+
+      setMessages(transformedMessages)
+    } catch (error) {
+      console.error('Failed to load messages:', error)
+      setMessages([])
+    } finally {
+      setLoadingMessages(false)
+    }
+  }
 
   const filteredMessages = useMemo(() => {
-    let filtered = mockMessages.filter(message => {
-      const matchesSearch = message.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           message.fromTo.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           message.preview.toLowerCase().includes(searchTerm.toLowerCase())
+    if (!searchTerm || searchTerm.trim() === '') {
+      // If no search term, return all messages filtered by tab only
+      return messages.filter(message => {
+        return activeTab === 'all' || message.type === activeTab
+      })
+    }
+    
+    const searchLower = searchTerm.toLowerCase().trim()
+    
+    let filtered = messages.filter(message => {
+      // Only search by recipient name (fromTo.name)
+      const recipientName = message.fromTo?.name || ''
+      const matchesSearch = recipientName.toLowerCase().includes(searchLower)
       
       const matchesTab = activeTab === 'all' || message.type === activeTab
       
@@ -34,19 +146,24 @@ const AdminMessagesPage = () => {
     })
     
     return filtered
-  }, [searchTerm, activeTab])
+  }, [messages, searchTerm, activeTab])
 
   const statusCounts = useMemo(() => ({
-    all: mockMessages.length,
-    received: mockMessages.filter(m => m.type === 'received').length,
-    sent: mockMessages.filter(m => m.type === 'sent').length,
-    archived: mockMessages.filter(m => m.type === 'archived').length
-  }), [])
+    all: messages.length,
+    received: messages.filter(m => m.type === 'received').length,
+    sent: messages.filter(m => m.type === 'sent').length,
+    archived: messages.filter(m => m.type === 'archived').length
+  }), [messages])
 
   const handleMessageAction = (message, action) => {
     setSelectedMessage(message)
     switch(action) {
       case 'reply':
+        // Pre-fill reply form with subject
+        setReplyForm({
+          subject: message.subject ? `Re: ${message.subject}` : 'Re: Message',
+          message: ''
+        })
         setShowReplyModal(true)
         break
       case 'archive':
@@ -58,13 +175,220 @@ const AdminMessagesPage = () => {
     }
   }
 
+  // Handle sending reply
+  const handleSendReply = async (e) => {
+    e.preventDefault()
+    if (!selectedMessage || sendingReply) return
+
+    setReplyError(null)
+    setReplySuccess(false)
+    setSendingReply(true)
+
+    try {
+      // Determine receiver based on message type
+      let receiverId = selectedMessage.partner_id
+      let receiverType = selectedMessage.partner_type || 'user'
+      
+      // If it's a received message, reply to the sender
+      // If it's a sent message, this shouldn't happen, but handle it anyway
+      if (selectedMessage.type === 'received') {
+        receiverId = selectedMessage.partner_id
+        receiverType = selectedMessage.partner_type
+      } else {
+        // For sent messages, we'd need the original receiver
+        receiverId = selectedMessage.original?.receiver_id || selectedMessage.partner_id
+        receiverType = selectedMessage.original?.receiver_type || selectedMessage.partner_type
+      }
+
+      await messagesAPI.sendMessage({
+        receiver_id: parseInt(receiverId, 10),
+        receiver_type: receiverType,
+        subject: replyForm.subject,
+        message: replyForm.message,
+        parent_message_id: selectedMessage.id
+      })
+
+      setReplySuccess(true)
+      
+      // Refresh messages
+      await loadMessages()
+      
+      // Close modal after 2 seconds
+      setTimeout(() => {
+        closeAllModals()
+      }, 2000)
+    } catch (error) {
+      console.error('Failed to send reply:', error)
+      setReplyError(error.message || 'Failed to send reply. Please try again.')
+    } finally {
+      setSendingReply(false)
+    }
+  }
+
   const closeAllModals = () => {
     setShowComposeModal(false)
     setShowReplyModal(false)
     setShowArchiveModal(false)
     setShowUnarchiveModal(false)
     setSelectedMessage(null)
-    setComposeForm({ recipient: '', subject: '', message: '' })
+    setComposeForm({ recipient: '', subject: '', message: '', specificUser: '' })
+    setReplyForm({ subject: '', message: '' })
+    // Reset recipients lists and loading state to fetch fresh data next time modal opens
+    setUsersList([])
+    setSellersList([])
+    setLoadingRecipients(false)
+    // Reset message sending states
+    setSendingMessage(false)
+    setSendMessageError(null)
+    setSendMessageSuccess(false)
+    setSendingReply(false)
+    setReplyError(null)
+    setReplySuccess(false)
+  }
+
+  // Fetch active users and verified sellers when compose modal opens
+  useEffect(() => {
+    if (!showComposeModal) {
+      return // Don't fetch if modal is closed
+    }
+
+    let isCancelled = false
+
+    const fetchRecipients = async () => {
+      setLoadingRecipients(true)
+      try {
+        // Fetch active users/customers
+        const usersResponse = await adminAPI.users.getAllUsers({
+          role: 'customer',
+          status: 'active',
+          limit: 1000
+        })
+        const usersData = usersResponse.data?.users || usersResponse.users || []
+        
+        // Fetch verified sellers
+        const sellersResponse = await adminAPI.sellers.getAll({
+          verification_status: 'verified',
+          limit: 1000
+        })
+        const sellersData = sellersResponse.data?.sellers || sellersResponse.sellers || []
+
+        if (!isCancelled) {
+          setUsersList(usersData)
+          setSellersList(sellersData)
+          console.log('✅ Loaded recipients:', { users: usersData.length, sellers: sellersData.length })
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          console.error('❌ Failed to fetch recipients:', error)
+        }
+      } finally {
+        if (!isCancelled) {
+          setLoadingRecipients(false)
+        }
+      }
+    }
+
+    fetchRecipients()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [showComposeModal])
+
+  // Handle sending message
+  const handleSendMessage = async (e) => {
+    e.preventDefault()
+    setSendMessageError(null)
+    setSendMessageSuccess(false)
+
+    // Validate form
+    if (!composeForm.recipient || !composeForm.subject || !composeForm.message.trim()) {
+      setSendMessageError('Please fill in all required fields')
+      return
+    }
+
+    if (composeForm.recipient === 'specific' && !composeForm.specificUser) {
+      setSendMessageError('Please select a specific user')
+      return
+    }
+
+    setSendingMessage(true)
+
+    try {
+      let recipients = []
+
+      // Determine recipients based on selection
+      if (composeForm.recipient === 'specific') {
+        // Parse specific user (format: "user-123" or "seller-123")
+        const [type, id] = composeForm.specificUser.split('-')
+        if (type === 'user') {
+          recipients.push({ id: parseInt(id), type: 'user' })
+        } else if (type === 'seller') {
+          recipients.push({ id: parseInt(id), type: 'seller' })
+        }
+      } else if (composeForm.recipient === 'all-users' || composeForm.recipient === 'all-customers') {
+        // Send to all active users
+        if (usersList.length === 0) {
+          // Fetch users if not already loaded
+          const usersResponse = await adminAPI.users.getAllUsers({
+            role: 'customer',
+            status: 'active',
+            limit: 1000
+          })
+          const usersData = usersResponse.data?.users || usersResponse.users || []
+          recipients = usersData.map(user => ({ id: user.id, type: 'user' }))
+        } else {
+          recipients = usersList.map(user => ({ id: user.id, type: 'user' }))
+        }
+      } else if (composeForm.recipient === 'all-producers') {
+        // Send to all verified sellers
+        if (sellersList.length === 0) {
+          // Fetch sellers if not already loaded
+          const sellersResponse = await adminAPI.sellers.getAll({
+            verification_status: 'verified',
+            limit: 1000
+          })
+          const sellersData = sellersResponse.data?.sellers || sellersResponse.sellers || []
+          recipients = sellersData.map(seller => ({ id: seller.id, type: 'seller' }))
+        } else {
+          recipients = sellersList.map(seller => ({ id: seller.id, type: 'seller' }))
+        }
+      }
+
+      if (recipients.length === 0) {
+        setSendMessageError('No recipients found')
+        setSendingMessage(false)
+        return
+      }
+
+      // Send message to each recipient
+      const sendPromises = recipients.map(recipient => 
+        messagesAPI.sendMessage({
+          receiver_id: recipient.id,
+          receiver_type: recipient.type,
+          subject: composeForm.subject,
+          message: composeForm.message
+        })
+      )
+
+      await Promise.all(sendPromises)
+      
+      setSendMessageSuccess(true)
+      console.log(`✅ Message sent to ${recipients.length} recipient(s)`)
+      
+      // Refresh messages after sending
+      await loadMessages()
+      
+      // Close modal after 2 seconds
+      setTimeout(() => {
+        closeAllModals()
+      }, 2000)
+    } catch (error) {
+      console.error('❌ Failed to send message:', error)
+      setSendMessageError(error.message || 'Failed to send message. Please try again.')
+    } finally {
+      setSendingMessage(false)
+    }
   }
 
   // Reusable ActionButton component for consistent styling
@@ -244,112 +568,6 @@ const AdminMessagesPage = () => {
         </div>
       </div>
 
-      {/* Message Actions */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-        {/* Send Message */}
-        <div className="admin-card">
-          <div className="card-header">
-            <h3 className="card-title">
-              <i className="bi bi-send"></i>
-              Send Message
-            </h3>
-          </div>
-          <div className="card-body">
-            <form onSubmit={(e) => { e.preventDefault(); setShowComposeModal(true); }}>
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 500 }}>To:</label>
-                <select 
-                  className="form-control"
-                  value={composeForm.recipient}
-                  onChange={(e) => setComposeForm({...composeForm, recipient: e.target.value})}
-                >
-                  <option value="">Select recipient...</option>
-                  <option value="all-users">All Users</option>
-                  <option value="all-producers">All Producers</option>
-                  <option value="specific">Specific User</option>
-                </select>
-              </div>
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 500 }}>Subject:</label>
-                <input 
-                  type="text" 
-                  className="form-control" 
-                  placeholder="Enter message subject"
-                  value={composeForm.subject}
-                  onChange={(e) => setComposeForm({...composeForm, subject: e.target.value})}
-                />
-              </div>
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 500 }}>Message:</label>
-                <textarea 
-                  className="form-control" 
-                  rows="4" 
-                  placeholder="Type your message here..."
-                  value={composeForm.message}
-                  onChange={(e) => setComposeForm({...composeForm, message: e.target.value})}
-                ></textarea>
-              </div>
-              <button type="submit" className="btn-admin btn-admin-primary" style={{ width: '100%' }}>
-                <i className="bi bi-send"></i>
-                Send Message
-              </button>
-            </form>
-          </div>
-        </div>
-
-        {/* Message Filters */}
-        <div className="admin-card">
-          <div className="card-header">
-            <h3 className="card-title">
-              <i className="bi bi-funnel"></i>
-              Message Filters
-            </h3>
-          </div>
-          <div className="card-body">
-            <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 500 }}>Message Type:</label>
-              <select 
-                className="form-control"
-                value={messageTypeFilter}
-                onChange={(e) => setMessageTypeFilter(e.target.value)}
-              >
-                <option value="all">All Messages</option>
-                <option value="received">Received Messages</option>
-                <option value="sent">Sent Messages</option>
-                <option value="archived">Archived Messages</option>
-              </select>
-            </div>
-            <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 500 }}>Date Range:</label>
-              <select 
-                className="form-control"
-                value={dateRangeFilter}
-                onChange={(e) => setDateRangeFilter(e.target.value)}
-              >
-                <option value="all">All Time</option>
-                <option value="7days">Last 7 days</option>
-                <option value="30days">Last 30 days</option>
-                <option value="3months">Last 3 months</option>
-              </select>
-            </div>
-            <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 500 }}>Search:</label>
-              <input 
-                type="search" 
-                className="form-control" 
-                placeholder="Search messages..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <button className="btn-admin btn-admin-secondary" style={{ width: '100%' }}>
-              <i className="bi bi-search"></i>
-              Apply Filters
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Messages Table */}
       <div className="admin-card">
         <div className="card-header">
@@ -359,7 +577,7 @@ const AdminMessagesPage = () => {
               <input
                 type="search"
                 className="form-control"
-                placeholder="Search messages..."
+                placeholder="Search by recipient..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 style={{ width: '250px' }}
@@ -432,20 +650,28 @@ const AdminMessagesPage = () => {
         </div>
 
         <div className="card-body" style={{ padding: 0 }}>
-          <table className="admin-table table table-striped table-hover" style={{ width: '100%' }}>
-            <thead>
-              <tr>
-                <th>Type</th>
-                <th>From/To</th>
-                <th>Subject</th>
-                <th>Message Preview</th>
-                <th>Date</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredMessages.map((message) => (
+          {loadingMessages ? (
+            <div style={{ padding: '40px', textAlign: 'center' }}>
+              <div className="spinner-border spinner-border-sm text-success" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </div>
+              <p className="text-muted mt-2">Loading messages...</p>
+            </div>
+          ) : (
+            <table className="admin-table table table-striped table-hover" style={{ width: '100%' }}>
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>From/To</th>
+                  <th>Subject</th>
+                  <th>Message Preview</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredMessages.map((message) => (
                 <tr 
                   key={message.id}
                   style={{ cursor: 'pointer' }}
@@ -546,17 +772,25 @@ const AdminMessagesPage = () => {
                   </td>
                 </tr>
               ))}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          )}
 
-          {filteredMessages.length === 0 && (
+          {!loadingMessages && filteredMessages.length === 0 && (
             <div style={{ 
               padding: '40px', 
               textAlign: 'center', 
               color: 'var(--secondary-color)' 
             }}>
-              <i className="bi bi-search" style={{ fontSize: '48px', marginBottom: '16px' }}></i>
-              <div>No messages found matching your search criteria.</div>
+              <i className="bi bi-inbox" style={{ fontSize: '48px', marginBottom: '16px' }}></i>
+              <div>
+                {searchTerm 
+                  ? `No messages found matching "${searchTerm}"`
+                  : messages.length === 0 
+                    ? 'No messages yet. Start by sending a message!'
+                    : `No ${activeTab === 'all' ? '' : activeTab} messages found.`
+                }
+              </div>
             </div>
           )}
         </div>
@@ -571,7 +805,7 @@ const AdminMessagesPage = () => {
               <button className="modal-close" onClick={closeAllModals}>×</button>
             </div>
             <div className="modal-body">
-              <form>
+              <form onSubmit={handleSendMessage}>
                 <div className="form-group">
                   <label>To *</label>
                   <select 
@@ -591,7 +825,46 @@ const AdminMessagesPage = () => {
                 {composeForm.recipient === 'specific' && (
                   <div className="form-group">
                     <label>Specific User *</label>
-                    <input type="text" className="form-control" placeholder="Enter username or email" />
+                    {loadingRecipients ? (
+                      <div className="form-control" style={{ padding: '10px', textAlign: 'center', color: '#666' }}>
+                        <i className="bi bi-hourglass-split"></i> Loading users...
+                      </div>
+                    ) : (
+                      <select 
+                        className="form-control"
+                        value={composeForm.specificUser}
+                        onChange={(e) => setComposeForm({...composeForm, specificUser: e.target.value})}
+                        required={composeForm.recipient === 'specific'}
+                      >
+                        <option value="">Select a user...</option>
+                        
+                        {/* Active Customers */}
+                        {usersList.length > 0 && (
+                          <optgroup label="Active Customers">
+                            {usersList.map((user) => (
+                              <option key={`user-${user.id}`} value={`user-${user.id}`}>
+                                {`${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email} - {user.email} {user.phone ? `(${user.phone})` : ''}
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
+                        
+                        {/* Verified Sellers */}
+                        {sellersList.length > 0 && (
+                          <optgroup label="Verified Sellers">
+                            {sellersList.map((seller) => (
+                              <option key={`seller-${seller.id}`} value={`seller-${seller.id}`}>
+                                {seller.business_name || seller.owner_name || seller.email} - {seller.email} {seller.phone ? `(${seller.phone})` : ''}
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
+                        
+                        {usersList.length === 0 && sellersList.length === 0 && (
+                          <option value="" disabled>No users available</option>
+                        )}
+                      </select>
+                    )}
                   </div>
                 )}
 
@@ -619,23 +892,47 @@ const AdminMessagesPage = () => {
                   ></textarea>
                 </div>
 
-                <div className="form-group">
-                  <label>Priority</label>
-                  <select className="form-control">
-                    <option value="normal">Normal</option>
-                    <option value="high">High</option>
-                    <option value="urgent">Urgent</option>
-                  </select>
-                </div>
+                {/* Error message */}
+                {sendMessageError && (
+                  <div className="alert alert-danger" style={{ marginTop: '15px' }}>
+                    <i className="bi bi-exclamation-circle"></i> {sendMessageError}
+                  </div>
+                )}
+
+                {/* Success message */}
+                {sendMessageSuccess && (
+                  <div className="alert alert-success" style={{ marginTop: '15px' }}>
+                    <i className="bi bi-check-circle"></i> Message sent successfully!
+                  </div>
+                )}
               </form>
             </div>
             <div className="modal-footer">
-              <button className="btn-admin btn-admin-outline" onClick={closeAllModals}>
+              <button 
+                type="button"
+                className="btn-admin btn-admin-outline" 
+                onClick={closeAllModals}
+                disabled={sendingMessage}
+              >
                 Cancel
               </button>
-              <button className="btn-admin btn-admin-primary" onClick={closeAllModals}>
-                <i className="bi bi-send"></i>
-                Send Message
+              <button 
+                type="submit"
+                className="btn-admin btn-admin-primary" 
+                onClick={handleSendMessage}
+                disabled={sendingMessage || sendMessageSuccess}
+              >
+                {sendingMessage ? (
+                  <>
+                    <i className="bi bi-hourglass-split"></i>
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <i className="bi bi-send"></i>
+                    Send Message
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -659,13 +956,14 @@ const AdminMessagesPage = () => {
                 </div>
               </div>
 
-              <form>
+              <form onSubmit={handleSendReply}>
                 <div className="form-group">
                   <label>Subject *</label>
                   <input 
                     type="text" 
                     className="form-control" 
-                    defaultValue={`Re: ${selectedMessage.subject}`}
+                    value={replyForm.subject}
+                    onChange={(e) => setReplyForm({...replyForm, subject: e.target.value})}
                     required
                   />
                 </div>
@@ -676,18 +974,53 @@ const AdminMessagesPage = () => {
                     className="form-control" 
                     rows="6" 
                     placeholder="Type your reply here..."
+                    value={replyForm.message}
+                    onChange={(e) => setReplyForm({...replyForm, message: e.target.value})}
                     required
                   ></textarea>
                 </div>
+
+                {/* Error message */}
+                {replyError && (
+                  <div className="alert alert-danger" style={{ marginTop: '15px' }}>
+                    <i className="bi bi-exclamation-circle"></i> {replyError}
+                  </div>
+                )}
+
+                {/* Success message */}
+                {replySuccess && (
+                  <div className="alert alert-success" style={{ marginTop: '15px' }}>
+                    <i className="bi bi-check-circle"></i> Reply sent successfully!
+                  </div>
+                )}
               </form>
             </div>
             <div className="modal-footer">
-              <button className="btn-admin btn-admin-outline" onClick={closeAllModals}>
+              <button 
+                type="button"
+                className="btn-admin btn-admin-outline" 
+                onClick={closeAllModals}
+                disabled={sendingReply}
+              >
                 Cancel
               </button>
-              <button className="btn-admin btn-admin-primary" onClick={closeAllModals}>
-                <i className="bi bi-reply"></i>
-                Send Reply
+              <button 
+                type="submit"
+                className="btn-admin btn-admin-primary" 
+                onClick={handleSendReply}
+                disabled={sendingReply || replySuccess}
+              >
+                {sendingReply ? (
+                  <>
+                    <i className="bi bi-hourglass-split"></i>
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <i className="bi bi-reply"></i>
+                    Send Reply
+                  </>
+                )}
               </button>
             </div>
           </div>

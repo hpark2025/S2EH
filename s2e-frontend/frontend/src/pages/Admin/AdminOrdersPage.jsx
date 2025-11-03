@@ -27,6 +27,7 @@ const exportToExcel = (data, filename = 'orders') => {
       'Main Product': order.products.main,
       'Additional Items': order.products.additional,
       'Amount': `₱${order.amount}`,
+      'Quantity': order.quantity || 0,
       'Status': order.status,
       'Payment': order.payment,
       'Date': order.date,
@@ -53,6 +54,7 @@ const exportToCSV = (data, filename = 'orders') => {
       'Main Product': order.products.main,
       'Additional Items': order.products.additional,
       'Amount': `₱${order.amount}`,
+      'Quantity': order.quantity || 0,
       'Status': order.status,
       'Payment': order.payment,
       'Date': order.date,
@@ -97,6 +99,7 @@ const exportToPDF = (data, filename = 'orders') => {
       order.customer.name,
       order.products.main,
       `₱${order.amount}`,
+      order.quantity || 0,
       order.status,
       order.payment,
       order.date
@@ -105,7 +108,7 @@ const exportToPDF = (data, filename = 'orders') => {
     // Add table using autoTable
     if (doc.autoTable) {
       doc.autoTable({
-        head: [['Order ID', 'Customer', 'Main Product', 'Amount', 'Status', 'Payment', 'Date']],
+        head: [['Order ID', 'Customer', 'Main Product', 'Amount', 'Quantity', 'Status', 'Payment', 'Date']],
         body: tableData,
         startY: 40,
         styles: { fontSize: 8 },
@@ -118,7 +121,7 @@ const exportToPDF = (data, filename = 'orders') => {
       doc.setFontSize(8)
       
       // Add header
-      const headers = ['Order ID', 'Customer', 'Main Product', 'Amount', 'Status', 'Payment', 'Date']
+      const headers = ['Order ID', 'Customer', 'Main Product', 'Amount', 'Quantity', 'Status', 'Payment', 'Date']
       let xPosition = 14
       headers.forEach(header => {
         doc.text(header, xPosition, yPosition)
@@ -155,10 +158,10 @@ const exportToPDF = (data, filename = 'orders') => {
 const copyToClipboard = (data) => {
   try {
     const tableText = data.map(order => 
-      `${order.order_number || order.id}\t${order.customer.name}\t${order.products.main}\t₱${order.amount}\t${order.status}\t${order.payment}\t${order.date}`
+      `${order.order_number || order.id}\t${order.customer.name}\t${order.products.main}\t₱${order.amount}\t${order.quantity || 0}\t${order.status}\t${order.payment}\t${order.date}`
     ).join('\n')
     
-    const header = 'Order ID\tCustomer\tMain Product\tAmount\tStatus\tPayment\tDate\n'
+    const header = 'Order ID\tCustomer\tMain Product\tAmount\tQuantity\tStatus\tPayment\tDate\n'
     const fullText = header + tableText
     
     navigator.clipboard.writeText(fullText).then(() => {
@@ -182,6 +185,7 @@ const printTable = (data) => {
         <td>${order.customer.name}</td>
         <td>${order.products.main}</td>
         <td>₱${order.amount}</td>
+        <td>${order.quantity || 0}</td>
         <td>${order.status}</td>
         <td>${order.payment}</td>
         <td>${order.date}</td>
@@ -217,6 +221,7 @@ const printTable = (data) => {
               <th>Customer</th>
               <th>Main Product</th>
               <th>Amount</th>
+              <th>Quantity</th>
               <th>Status</th>
               <th>Payment</th>
               <th>Date</th>
@@ -459,6 +464,11 @@ export default function AdminOrdersPage() {
           itemCount: items.length
         })
         
+        // Calculate total quantity from items
+        const totalQuantity = items.reduce((sum, item) => {
+          return sum + (parseInt(item.quantity || 0))
+        }, 0)
+
         return {
           id: order.id, // Keep id for React key and internal use
           order_number: orderNumber, // This is what will be displayed as Order ID
@@ -473,6 +483,7 @@ export default function AdminOrdersPage() {
             items: items // Keep full items array for modals
           },
           amount: parseFloat(order.total || 0),
+          quantity: totalQuantity, // Total quantity of all items in the order
           status: order.status || 'pending',
           payment: paymentStatus, // Always 'COD'
           date: orderDate,
@@ -499,10 +510,20 @@ export default function AdminOrdersPage() {
   }
 
   const filteredOrders = useMemo(() => {
+    if (!searchTerm || searchTerm.trim() === '') {
+      // If no search term, return all orders filtered by status only
+      return orders.filter(order => {
+        return selectedStatus === 'all' || order.status === selectedStatus
+      })
+    }
+    
+    const searchLower = searchTerm.toLowerCase().trim()
+    
     return orders.filter(order => {
-      const searchLower = searchTerm.toLowerCase()
+      // Primary search: order number
+      const orderNumber = String(order.order_number || order.id || '')
       const matchesSearch = 
-        String(order.order_number || order.id || '').toLowerCase().includes(searchLower) ||
+        orderNumber.toLowerCase().includes(searchLower) ||
         (order.customer?.name || '').toLowerCase().includes(searchLower) ||
         (order.customer?.email || '').toLowerCase().includes(searchLower) ||
         (order.products?.main || '').toLowerCase().includes(searchLower) ||
@@ -1225,6 +1246,7 @@ export default function AdminOrdersPage() {
                 <th>Customer</th>
                 <th>Products</th>
                 <th>Amount</th>
+                <th>Quantity</th>
                 <th>Status</th>
                 <th>Payment</th>
                 <th>Date</th>
@@ -1258,6 +1280,7 @@ export default function AdminOrdersPage() {
                     </div>
                   </td>
                   <td>₱{order.amount.toLocaleString()}</td>
+                  <td>{order.quantity || 0}</td>
                   <td>
                     <span className={`status-badge ${getStatusBadgeClass(order.status)}`}>
                       {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
@@ -1511,6 +1534,9 @@ export default function AdminOrdersPage() {
           </div>
         </div>
       )}
+
+
+
     </>
   )
 }
