@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import {
   AvatarChangeModal,
   EditProfileModal,
-  VerificationModal
+  VerificationModal,
+  AddressEditModal
 } from '../../components/SellerModals'
 import { sellerAPI } from '../../services/sellerAPI'
 
@@ -11,6 +12,7 @@ const SellerProfilePage = () => {
   const [showAvatarModal, setShowAvatarModal] = useState(false)
   const [showEditProfileModal, setShowEditProfileModal] = useState(false)
   const [showVerificationModal, setShowVerificationModal] = useState(false)
+  const [showAddressModal, setShowAddressModal] = useState(false)
   const [loading, setLoading] = useState(true)
 
   // Profile data
@@ -36,6 +38,17 @@ const SellerProfilePage = () => {
           email: seller.email,
           phone: seller.phone,
           businessName: seller.business_name
+        },
+        address: {
+          province: seller.province || 'Camarines Sur',
+          municipality: seller.municipality || 'Sagnay',
+          barangay: seller.barangay || 'Poblacion',
+          street: seller.street || '',
+          postal_code: seller.postal_code || '',
+          landmark: seller.landmark || '',
+          province_code: seller.province_code || '',
+          municipality_code: seller.municipality_code || '',
+          barangay_code: seller.barangay_code || ''
         },
         business: {
           businessName: seller.business_name,
@@ -255,6 +268,69 @@ const SellerProfilePage = () => {
               </div>
             </div>
           </div>
+          
+          {/* Address Information */}
+          <div className="seller-card mb-4">
+            <div className="card-header">
+              <h5 className="card-title">
+                <i className="bi bi-geo-alt me-2"></i>
+                Address Information
+              </h5>
+              <button
+                className="btn btn-sm btn-outline-primary"
+                onClick={() => setShowAddressModal(true)}
+              >
+                <i className="bi bi-pencil me-1"></i>
+                Edit Address
+              </button>
+            </div>
+            <div className="card-body">
+              <div className="row">
+                <div className="col-md-6">
+                  <div className="info-group">
+                    <label className="info-label">Province</label>
+                    <div className="info-value">{profileData.address.province}</div>
+                  </div>
+                </div>
+                <div className="col-md-6">
+                  <div className="info-group">
+                    <label className="info-label">Municipality/City</label>
+                    <div className="info-value">{profileData.address.municipality}</div>
+                  </div>
+                </div>
+                <div className="col-md-6">
+                  <div className="info-group">
+                    <label className="info-label">Barangay</label>
+                    <div className="info-value">{profileData.address.barangay}</div>
+                  </div>
+                </div>
+                {profileData.address.street && (
+                  <div className="col-md-6">
+                    <div className="info-group">
+                      <label className="info-label">Street</label>
+                      <div className="info-value">{profileData.address.street}</div>
+                    </div>
+                  </div>
+                )}
+                {profileData.address.postal_code && (
+                  <div className="col-md-6">
+                    <div className="info-group">
+                      <label className="info-label">Postal Code</label>
+                      <div className="info-value">{profileData.address.postal_code}</div>
+                    </div>
+                  </div>
+                )}
+                {profileData.address.landmark && (
+                  <div className="col-md-6">
+                    <div className="info-group">
+                      <label className="info-label">Landmark</label>
+                      <div className="info-value">{profileData.address.landmark}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Right Column */}
@@ -425,6 +501,33 @@ const SellerProfilePage = () => {
           transform: translateY(-1px);
           box-shadow: 0 4px 8px rgba(46, 125, 50, 0.3);
         }
+        
+        /* Custom Modal Styles for Wider Modals */
+        :global(.modal-dialog) {
+          max-width: 98% !important;
+          width: 98% !important;
+          margin: 0.5rem auto !important;
+        }
+        
+        @media (min-width: 992px) {
+          :global(.modal-lg),
+          :global(.modal-xl) {
+            max-width: 98% !important;
+            width: 98% !important;
+          }
+        }
+        
+        @media (min-width: 1200px) {
+          :global(.modal-xl) {
+            max-width: 98% !important;
+            width: 98% !important;
+          }
+        }
+        
+        /* Fix modal content to take full width */
+        :global(.modal-content) {
+          width: 100% !important;
+        }
       `}</style>
 
       {/* Profile Modals */}
@@ -439,6 +542,21 @@ const SellerProfilePage = () => {
       <VerificationModal
         show={showVerificationModal}
         onClose={() => setShowVerificationModal(false)}
+      />
+      <AddressEditModal
+        show={showAddressModal}
+        onClose={() => setShowAddressModal(false)}
+        onSave={async (addressData) => {
+          console.log('Saving address data:', addressData)
+          // In a real implementation, you would call an API to update the address
+          // For now, we'll just update the local state
+          setProfileData(prev => ({
+            ...prev,
+            address: addressData
+          }))
+          return Promise.resolve(true)
+        }}
+        initialAddress={profileData?.address}
       />
     </div>
   )

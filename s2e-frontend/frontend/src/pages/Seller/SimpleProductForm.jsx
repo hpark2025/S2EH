@@ -67,22 +67,33 @@ export default function SimpleProductForm({ onProductCreated, onClose }) {
   };
 
   return (
-    <div className="modal show d-block" tabIndex="-1">
-      <div className="modal-dialog modal-lg">
-        <div className="modal-content">
+    <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+      <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg" style={{ maxHeight: '90vh' }}>
+        <div className="modal-content" style={{ maxHeight: '90vh' }}>
           <div className="modal-header">
             <h5 className="modal-title">Add New Product</h5>
             <button
               type="button"
               className="btn-close"
-              onClick={onClose}
+              onClick={() => {
+                onClose();
+                setFormData({
+                  title: '',
+                  description: '',
+                  price: '',
+                  inventory_quantity: '',
+                  status: 'draft',
+                  image: null
+                });
+                setImagePreview(null);
+              }}
             ></button>
           </div>
           <form onSubmit={handleSubmit}>
-            <div className="modal-body">
+            <div className="modal-body" style={{ maxHeight: 'calc(90vh - 120px)', overflowY: 'auto' }}>
               <div className="row">
-                <div className="col-md-6 mb-3">
-                  <label className="form-label">Product Title *</label>
+                <div className="col-12 mb-3">
+                  <label className="form-label">Product Name *</label>
                   <input
                     type="text"
                     className="form-control"
@@ -90,8 +101,10 @@ export default function SimpleProductForm({ onProductCreated, onClose }) {
                     onChange={(e) => setFormData({...formData, title: e.target.value})}
                     required
                     disabled={loading}
+                    placeholder="e.g., Fresh Organic Tomatoes, Premium Rice"
                   />
                 </div>
+
                 <div className="col-md-6 mb-3">
                   <label className="form-label">Price (PHP) *</label>
                   <input
@@ -103,19 +116,10 @@ export default function SimpleProductForm({ onProductCreated, onClose }) {
                     min="0"
                     step="0.01"
                     disabled={loading}
+                    placeholder="0.00"
                   />
                 </div>
-                <div className="col-12 mb-3">
-                  <label className="form-label">Description *</label>
-                  <textarea
-                    className="form-control"
-                    rows="3"
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    required
-                    disabled={loading}
-                  ></textarea>
-                </div>
+
                 <div className="col-md-6 mb-3">
                   <label className="form-label">Stock Quantity *</label>
                   <input
@@ -126,8 +130,10 @@ export default function SimpleProductForm({ onProductCreated, onClose }) {
                     required
                     min="0"
                     disabled={loading}
+                    placeholder="Available quantity"
                   />
                 </div>
+
                 <div className="col-md-6 mb-3">
                   <label className="form-label">Status</label>
                   <select
@@ -136,11 +142,13 @@ export default function SimpleProductForm({ onProductCreated, onClose }) {
                     onChange={(e) => setFormData({...formData, status: e.target.value})}
                     disabled={loading}
                   >
+                    <option value="">Select Status</option>
                     <option value="draft">Draft</option>
                     <option value="proposed">Proposed</option>
                   </select>
                 </div>
-                <div className="col-12 mb-3">
+
+                <div className="col-md-6 mb-3">
                   <label className="form-label">Product Image</label>
                   <input
                     type="file"
@@ -149,41 +157,68 @@ export default function SimpleProductForm({ onProductCreated, onClose }) {
                     onChange={handleImageChange}
                     disabled={loading}
                   />
-                  {imagePreview && (
-                    <div className="mt-3">
+                  <small className="text-muted">Upload a clear image of your product</small>
+                </div>
+
+                <div className="col-12 mb-3">
+                  <label className="form-label">Description *</label>
+                  <textarea
+                    className="form-control"
+                    rows="3"
+                    value={formData.description}
+                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    required
+                    disabled={loading}
+                    placeholder="Describe your product features, benefits, and specifications..."
+                  ></textarea>
+                </div>
+
+                {/* Image Preview */}
+                {imagePreview && (
+                  <div className="col-12 mb-3">
+                    <label className="form-label">Product Image Preview</label>
+                    <div style={{ height: '300px', border: '1px solid #dee2e6', borderRadius: '4px', overflow: 'hidden' }}>
                       <img 
                         src={imagePreview} 
-                        alt="Preview" 
-                        className="img-thumbnail"
-                        style={{ maxWidth: '200px', maxHeight: '200px', objectFit: 'cover' }}
+                        alt="Product Preview" 
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                       />
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
+
+                {loading && (
+                  <div className="col-12 mb-3 text-center">
+                    <div className="spinner-border spinner-border-sm text-primary" role="status">
+                      <span className="visually-hidden">Creating product...</span>
+                    </div>
+                    <small className="text-muted ms-2">Creating product...</small>
+                  </div>
+                )}
               </div>
             </div>
             <div className="modal-footer">
               <button
                 type="button"
                 className="btn btn-secondary"
-                onClick={onClose}
+                onClick={() => {
+                  onClose();
+                  setFormData({
+                    title: '',
+                    description: '',
+                    price: '',
+                    inventory_quantity: '',
+                    status: 'draft',
+                    image: null
+                  });
+                  setImagePreview(null);
+                }}
                 disabled={loading}
               >
                 Cancel
               </button>
-              <button 
-                type="submit" 
-                className="btn btn-primary"
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <span className="spinner-border spinner-border-sm me-2" role="status"></span>
-                    Creating...
-                  </>
-                ) : (
-                  'Create Product'
-                )}
+              <button type="submit" className="btn btn-primary" disabled={loading}>
+                Create Product
               </button>
             </div>
           </form>

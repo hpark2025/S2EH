@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { sellerAPI } from '../../services/sellerAPI';
 import SimpleProductForm from './SimpleProductForm';
-import MedusaProductForm from './MedusaProductForm';
 import { productsAPI } from '../../services/authAPI';
 
 export default function SellerProductsPage() {
@@ -13,7 +12,6 @@ export default function SellerProductsPage() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [useSimpleForm, setUseSimpleForm] = useState(true); // Use SimpleProductForm by default for the new workflow
   const [editImage, setEditImage] = useState(null); // For edit modal image upload
   const [editImagePreview, setEditImagePreview] = useState(null); // For edit modal image preview
 
@@ -417,27 +415,13 @@ export default function SellerProductsPage() {
           <h2 className="mb-1">My Products</h2>
           <p className="text-muted mb-0">Manage your product inventory and listings</p>
         </div>
-        <div className="d-flex gap-3 align-items-center">
-          <div className="form-check form-switch">
-            <input
-              className="form-check-input"
-              type="checkbox"
-              id="useSimpleForm"
-              checked={useSimpleForm}
-              onChange={(e) => setUseSimpleForm(e.target.checked)}
-            />
-            <label className="form-check-label" htmlFor="useSimpleForm">
-              Simple Form
-            </label>
-          </div>
-          <button 
-            className="btn btn-enhanced"
-            onClick={() => setShowAddModal(true)}
-          >
-            <i className="bi bi-plus-circle me-2"></i>
-            Add Product
-          </button>
-        </div>
+        <button 
+          className="btn btn-enhanced"
+          onClick={() => setShowAddModal(true)}
+        >
+          <i className="bi bi-plus-circle me-2"></i>
+          Add Product
+        </button>
       </div>
 
 
@@ -605,40 +589,35 @@ export default function SellerProductsPage() {
 
       {/* Add Product Modal */}
       {showAddModal && (
-        useSimpleForm ? (
-          <SimpleProductForm
-            onProductCreated={loadProducts}
-            onClose={() => setShowAddModal(false)}
-          />
-        ) : (
-          <MedusaProductForm
-            onProductCreated={loadProducts}
-            onClose={() => setShowAddModal(false)}
-          />
-        )
+        <SimpleProductForm
+          onProductCreated={loadProducts}
+          onClose={() => setShowAddModal(false)}
+        />
       )}
 
-      {/* Enhanced Edit Product Modal */}
+      {/* Edit Product Modal */}
       {showEditModal && (
         <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog modal-lg">
-            <div className="modal-content dashboard-card">
-              <div className="modal-header border-0 pb-0">
-                <h5 className="modal-title fw-bold">
-                  <i className="bi bi-pencil-square me-2"></i>
-                  Edit Product
-                </h5>
+          <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg" style={{ maxHeight: '90vh' }}>
+            <div className="modal-content" style={{ maxHeight: '90vh' }}>
+              <div className="modal-header">
+                <h5 className="modal-title">Edit Product</h5>
                 <button
                   type="button"
                   className="btn-close"
-                  onClick={() => setShowEditModal(false)}
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingProduct(null);
+                    setEditImage(null);
+                    setEditImagePreview(null);
+                  }}
                 ></button>
               </div>
               <form onSubmit={handleEditProduct}>
-                <div className="modal-body">
-                  <div className="row g-3">
-                    <div className="col-md-6">
-                      <label className="form-label fw-semibold">Product Title *</label>
+                <div className="modal-body" style={{ maxHeight: 'calc(90vh - 120px)', overflowY: 'auto' }}>
+                  <div className="row">
+                    <div className="col-12 mb-3">
+                      <label className="form-label">Product Title *</label>
                       <input
                         type="text"
                         className="form-control"
@@ -648,35 +627,23 @@ export default function SellerProductsPage() {
                         placeholder="Enter product title"
                       />
                     </div>
-                    <div className="col-md-6">
-                      <label className="form-label fw-semibold">Price (PHP) *</label>
-                      <div className="input-group">
-                        <span className="input-group-text">₱</span>
-                        <input
-                          type="number"
-                          className="form-control"
-                          value={formData.price}
-                          onChange={(e) => setFormData({...formData, price: e.target.value})}
-                          required
-                          min="0"
-                          step="0.01"
-                          placeholder="0.00"
-                        />
-                      </div>
-                    </div>
-                    <div className="col-12">
-                      <label className="form-label fw-semibold">Description *</label>
-                      <textarea
+
+                    <div className="col-md-6 mb-3">
+                      <label className="form-label">Price (PHP) *</label>
+                      <input
+                        type="number"
                         className="form-control"
-                        rows="4"
-                        value={formData.description}
-                        onChange={(e) => setFormData({...formData, description: e.target.value})}
+                        value={formData.price}
+                        onChange={(e) => setFormData({...formData, price: e.target.value})}
                         required
-                        placeholder="Describe your product..."
-                      ></textarea>
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                      />
                     </div>
-                    <div className="col-md-6">
-                      <label className="form-label fw-semibold">Stock Quantity *</label>
+
+                    <div className="col-md-6 mb-3">
+                      <label className="form-label">Stock Quantity *</label>
                       <input
                         type="number"
                         className="form-control"
@@ -687,8 +654,21 @@ export default function SellerProductsPage() {
                         placeholder="0"
                       />
                     </div>
-                    <div className="col-md-6">
-                      <label className="form-label fw-semibold">Status</label>
+
+                    <div className="col-12 mb-3">
+                      <label className="form-label">Description *</label>
+                      <textarea
+                        className="form-control"
+                        rows="4"
+                        value={formData.description}
+                        onChange={(e) => setFormData({...formData, description: e.target.value})}
+                        required
+                        placeholder="Describe your product..."
+                      ></textarea>
+                    </div>
+
+                    <div className="col-md-6 mb-3">
+                      <label className="form-label">Status</label>
                       <select
                         className="form-select"
                         value={formData.status}
@@ -698,38 +678,45 @@ export default function SellerProductsPage() {
                         <option value="proposed">Proposed</option>
                       </select>
                     </div>
-                    <div className="col-12">
-                      <label className="form-label fw-semibold">Product Image</label>
+
+                    <div className="col-md-6 mb-3">
+                      <label className="form-label">Product Image</label>
                       <input
                         type="file"
                         className="form-control"
                         onChange={handleEditImageChange}
                         accept="image/*"
                       />
-                      {editImagePreview && (
-                        <div className="mt-3">
+                    </div>
+
+                    {editImagePreview && (
+                      <div className="col-12 mb-3">
+                        <label className="form-label">Image Preview</label>
+                        <div style={{ height: '200px', border: '1px solid #dee2e6', borderRadius: '4px', overflow: 'hidden' }}>
                           <img 
                             src={editImagePreview} 
                             alt="Preview" 
-                            style={{ maxWidth: '200px', maxHeight: '200px', objectFit: 'cover' }}
-                            className="rounded"
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                           />
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div className="modal-footer border-0 pt-0">
+                <div className="modal-footer">
                   <button
                     type="button"
-                    className="btn btn-outline-secondary"
-                    onClick={() => setShowEditModal(false)}
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      setShowEditModal(false);
+                      setEditingProduct(null);
+                      setEditImage(null);
+                      setEditImagePreview(null);
+                    }}
                   >
-                    <i className="bi bi-x-circle me-2"></i>
                     Cancel
                   </button>
-                  <button type="submit" className="btn btn-enhanced">
-                    <i className="bi bi-check-circle me-2"></i>
+                  <button type="submit" className="btn btn-primary">
                     Update Product
                   </button>
                 </div>
