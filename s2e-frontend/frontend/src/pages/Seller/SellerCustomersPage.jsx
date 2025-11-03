@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import DataExport from '../../utils/DataExport'
+import { sellerAPI } from '../../services/sellerAPI'
 import {
   ViewCustomerModal,
   MessageCustomerModal,
@@ -11,8 +12,8 @@ import {
 } from '../../components/SellerModals'
 
 const SellerCustomersPage = () => {
-  // Sample customer data matching customers.html
-  const [customers] = useState([])
+  const [customers, setCustomers] = useState([])
+  const [loading, setLoading] = useState(true)
 
   const [activeTab, setActiveTab] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
@@ -27,14 +28,43 @@ const SellerCustomersPage = () => {
   const [showLoyaltyProgramModal, setShowLoyaltyProgramModal] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState(null)
 
+  // Load customers from backend
+  useEffect(() => {
+    const loadCustomers = async () => {
+      try {
+        setLoading(true)
+        const response = await sellerAPI.getCustomers()
+        const customersData = response.data?.customers || response.customers || []
+        setCustomers(customersData)
+      } catch (error) {
+        console.error('Failed to load customers:', error)
+        setCustomers([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadCustomers()
+  }, [])
+
   // Filter customers based on active tab and search term
-  const filteredCustomers = customers.filter(customer => {
-    const matchesTab = activeTab === 'all' || customer.status === activeTab
-    const matchesSearch = customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         customer.phone.includes(searchTerm)
-    return matchesTab && matchesSearch
-  })
+  const filteredCustomers = useMemo(() => {
+    if (!searchTerm || searchTerm.trim() === '') {
+      return customers.filter(customer => {
+        return activeTab === 'all' || customer.status === activeTab
+      })
+    }
+    
+    const searchLower = searchTerm.toLowerCase().trim()
+    return customers.filter(customer => {
+      const matchesTab = activeTab === 'all' || customer.status === activeTab
+      const matchesSearch = 
+        (customer.name || '').toLowerCase().includes(searchLower) ||
+        (customer.email || '').toLowerCase().includes(searchLower) ||
+        (customer.phone || '').toString().includes(searchLower)
+      return matchesTab && matchesSearch
+    })
+  }, [customers, searchTerm, activeTab])
 
   // Calculate stats
   const totalCustomers = customers.length
@@ -42,7 +72,10 @@ const SellerCustomersPage = () => {
   const repeatCustomers = customers.filter(c => c.status === 'repeat' || c.status === 'vip').length
   const vipCustomers = customers.filter(c => c.status === 'vip').length
   const inactiveCustomers = customers.filter(c => c.status === 'inactive').length
-  const avgOrderValue = customers.reduce((sum, c) => sum + c.totalSpent, 0) / customers.reduce((sum, c) => sum + c.totalOrders, 1)
+  const totalOrders = customers.reduce((sum, c) => sum + (c.totalOrders || 0), 0)
+  const avgOrderValue = totalOrders > 0 
+    ? customers.reduce((sum, c) => sum + (c.totalSpent || 0), 0) / totalOrders 
+    : 0
 
   // Export handlers
   const handleExport = (format) => {
@@ -325,66 +358,38 @@ const SellerCustomersPage = () => {
               <i className="bi bi-arrow-repeat" style={{marginRight: '8px', fontSize: '16px'}}></i>
               Repeat ({repeatCustomers})
             </button>
-            <button 
-              className={`tab-btn ${activeTab === 'vip' ? 'active' : ''}`}
-              onClick={() => setActiveTab('vip')}
-              style={{
-                flex: 1, 
-                padding: '18px 24px', 
-                border: 'none', 
-                background: 'transparent', 
-                color: activeTab === 'vip' ? '#2c855f' : '#666',
-                fontWeight: 600, 
-                fontSize: '14px', 
-                borderBottom: activeTab === 'vip' ? '4px solid #2c855f' : '4px solid transparent',
-                cursor: 'pointer', 
-                transition: 'all 0.3s ease', 
-                textAlign: 'center'
-              }}
-            >
-              <i className="bi bi-star" style={{marginRight: '8px', fontSize: '16px'}}></i>
-              VIP ({vipCustomers})
-            </button>
-            <button 
-              className={`tab-btn ${activeTab === 'inactive' ? 'active' : ''}`}
-              onClick={() => setActiveTab('inactive')}
-              style={{
-                flex: 1, 
-                padding: '18px 24px', 
-                border: 'none', 
-                background: 'transparent', 
-                color: activeTab === 'inactive' ? '#2c855f' : '#666',
-                fontWeight: 600, 
-                fontSize: '14px', 
-                borderBottom: activeTab === 'inactive' ? '4px solid #2c855f' : '4px solid transparent',
-                cursor: 'pointer', 
-                transition: 'all 0.3s ease', 
-                textAlign: 'center'
-              }}
-            >
-              <i className="bi bi-person-x" style={{marginRight: '8px', fontSize: '16px'}}></i>
-              Inactive ({inactiveCustomers})
-            </button>
           </div>
         </div>
 
         <div className="card-body" style={{padding: 0}}>
-          <div className="table-responsive">
-            <table className="admin-table table table-striped table-hover" style={{width:'100%'}}>
-              <thead>
-                <tr>
-                  <th>Customer</th>
-                  <th>Contact</th>
-                  <th>Total Orders</th>
-                  <th>Total Spent</th>
-                  <th>Last Order</th>
-                  <th>Status</th>
-                  <th>Rating</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredCustomers.map((customer) => (
+          {loading ? (
+            <div className="text-center py-5">
+              <div className="spinner-border text-success" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </div>
+              <p className="mt-3 text-muted">Loading customers...</p>
+            </div>
+          ) : filteredCustomers.length === 0 ? (
+            <div className="text-center py-5">
+              <i className="bi bi-people fs-1 text-muted"></i>
+              <p className="mt-3 text-muted">No customers found</p>
+            </div>
+          ) : (
+            <div className="table-responsive">
+              <table className="admin-table table table-striped table-hover" style={{width:'100%'}}>
+                <thead>
+                  <tr>
+                    <th>Customer</th>
+                    <th>Contact</th>
+                    <th>Total Orders</th>
+                    <th>Total Spent</th>
+                    <th>Last Order</th>
+                    <th>Status</th>
+                    <th>Rating</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredCustomers.map((customer) => (
                   <tr key={customer.id} data-status={customer.status}>
                     <td>
                       <div className="d-flex align-items-center">
@@ -401,50 +406,29 @@ const SellerCustomersPage = () => {
                         <small className="text-muted">{customer.phone}</small>
                       </div>
                     </td>
-                    <td><strong>{customer.totalOrders}</strong></td>
-                    <td><strong>₱{customer.totalSpent.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></td>
-                    <td>{customer.lastOrder}</td>
-                    <td><span className={`status-badge ${getStatusBadgeClass(customer.status)}`}>{formatStatus(customer.status)}</span></td>
+                    <td><strong>{customer.totalOrders || 0}</strong></td>
+                    <td><strong>₱{(customer.totalSpent || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></td>
+                    <td>{customer.lastOrder || 'No orders yet'}</td>
+                    <td><span className={`status-badge ${getStatusBadgeClass(customer.status || 'active')}`}>{formatStatus(customer.status || 'active')}</span></td>
                     <td>
                       <div className="rating">
                         <div className="stars">
-                          {renderStars(customer.rating)}
+                          {customer.rating > 0 ? renderStars(customer.rating) : <span className="text-muted">No rating</span>}
                         </div>
-                        <small className="text-muted">{customer.rating} ({customer.ratingCount})</small>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="action-buttons">
-                        <button 
-                          className="btn btn-sm btn-outline-primary" 
-                          title="View Customer"
-                          onClick={() => handleViewCustomer(customer)}
-                        >
-                          <i className="bi bi-eye" style={{fontSize: '14px', color: 'inherit'}}></i>
-                        </button>
-                        <button 
-                          className="btn btn-sm btn-outline-success" 
-                          title="Send Message"
-                          onClick={() => handleMessageCustomer(customer)}
-                        >
-                          <i className="bi bi-chat-dots" style={{fontSize: '14px', color: 'inherit'}}></i>
-                        </button>
-                        <button 
-                          className="btn btn-sm btn-outline-info" 
-                          title="Order History"
-                          onClick={() => handleOrderHistory(customer)}
-                        >
-                          <i className="bi bi-clock-history" style={{fontSize: '14px', color: 'inherit'}}></i>
-                        </button>
+                        {customer.rating > 0 && (
+                          <small className="text-muted">{customer.rating.toFixed(1)} ({customer.ratingCount || 0})</small>
+                        )}
                       </div>
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
           
-          {/* Custom Pagination */}
+          {/* Custom Pagination - Only show when not loading and has customers */}
+          {!loading && filteredCustomers.length > 0 && (
           <div className="pagination-container" style={{display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px 0', borderTop: '1px solid #e0e0e0'}}>
             <nav aria-label="Table pagination">
               <ul className="pagination mb-0">
@@ -466,6 +450,7 @@ const SellerCustomersPage = () => {
               </ul>
             </nav>
           </div>
+          )}
         </div>
       </div>
 

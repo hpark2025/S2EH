@@ -3,9 +3,7 @@ import { useState } from 'react'
 export default function AdminTopbar({ 
   pageTitle = "Dashboard", 
   onToggleSidebar, 
-  onLogout,
-  showNotifications = true,
-  notificationCount = 5
+  onLogout
 }) {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
 
@@ -30,15 +28,6 @@ export default function AdminTopbar({
         </div>
         
         <div className="topbar-right">
-          {showNotifications && (
-            <button className="notification-icon" title="Notifications">
-              <i className="bi bi-bell"></i>
-              {notificationCount > 0 && (
-                <span className="notification-badge">{notificationCount}</span>
-              )}
-            </button>
-          )}
-          
           <div className="admin-profile" onClick={handleProfileClick}>
             <div className="admin-avatar">A</div>
             <span>Admin User</span>
@@ -108,37 +97,6 @@ export default function AdminTopbar({
           display: flex;
           align-items: center;
           gap: 20px;
-        }
-        
-        .notification-icon {
-          position: relative;
-          background: none;
-          border: none;
-          font-size: 20px;
-          color: #6c757d;
-          cursor: pointer;
-          padding: 8px;
-          border-radius: 4px;
-          transition: all 0.3s ease;
-        }
-        
-        .notification-icon:hover {
-          background: #f8f9fa;
-          color: #2c853f;
-        }
-        
-        .notification-badge {
-          position: absolute;
-          top: 2px;
-          right: 2px;
-          background: #e44c31;
-          color: white;
-          font-size: 10px;
-          padding: 2px 5px;
-          border-radius: 10px;
-          min-width: 16px;
-          text-align: center;
-          font-weight: 600;
         }
         
         .admin-profile {

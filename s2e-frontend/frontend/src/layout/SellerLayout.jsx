@@ -20,7 +20,6 @@ export default function SellerLayout() {
       '/seller/messages': 'Messages',
       '/seller/settings': 'Settings',
       '/seller/inventory': 'Inventory',
-      '/seller/stock-locations': 'Stock Locations',
       '/seller/customers': 'Customers',
       '/seller/analytics': 'Analytics',
       '/seller/account': 'Account Management',

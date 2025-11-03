@@ -31,12 +31,16 @@ $db = $database->getConnection();
 // Get seller profile with business address
 $query = "SELECT 
             s.*,
-            a.address_line_1,
+            a.id as address_id,
+            a.address_line_1 as street,
             a.address_line_2,
             a.barangay,
+            a.barangay_code,
             a.municipality,
+            a.municipality_code,
             a.city,
             a.province,
+            a.province_code,
             a.postal_code,
             a.country
           FROM sellers s

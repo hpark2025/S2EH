@@ -38,101 +38,48 @@ export default function SellerInventoryPage() {
   const handleUpdateInventory = async (e) => {
     e.preventDefault();
     try {
-      await sellerAPI.inventory.updateInventory(selectedProduct.id, updateData);
+      // Map inventory_quantity to stock_quantity for backend
+      const updatePayload = {
+        stock_quantity: parseInt(updateData.inventory_quantity, 10),
+        status: updateData.status
+      };
+      
+      await sellerAPI.products.updateProduct(selectedProduct.id, updatePayload);
       toast.success('Inventory updated successfully!');
       setShowUpdateModal(false);
       setSelectedProduct(null);
       loadProducts();
     } catch (error) {
       console.error('Failed to update inventory:', error);
-      toast.error('Failed to update inventory');
+      toast.error(error.response?.data?.message || 'Failed to update inventory');
     }
   };
 
   const openUpdateModal = (product) => {
     setSelectedProduct(product);
     setUpdateData({
-      inventory_quantity: getInventoryQuantity(product),
+      inventory_quantity: product.stock_quantity || 0,
       status: product.status || 'draft'
     });
     setShowUpdateModal(true);
   };
 
-  // Helper function to get inventory quantity from Medusa product structure
+  // Helper function to get inventory quantity from products table
   const getInventoryQuantity = (product) => {
-    console.log('🔍 Getting inventory quantity for product:', product.title);
-    console.log('🔍 Product first_variant:', product.first_variant);
-    console.log('🔍 Product total_inventory:', product.total_inventory);
-    
-    // Check if we have first_variant (custom backend structure)
-    if (product.first_variant && product.first_variant.inventory_quantity !== undefined) {
-      console.log('🔍 Using first_variant inventory_quantity:', product.first_variant.inventory_quantity);
-      return product.first_variant.inventory_quantity;
-    }
-    
-    // Fallback to total_inventory
-    if (product.total_inventory !== undefined) {
-      console.log('🔍 Using total_inventory:', product.total_inventory);
-      return product.total_inventory;
-    }
-    
-    // Fallback to standard variants array
-    if (product.variants && product.variants.length > 0) {
-      const variant = product.variants[0];
-      console.log('🔍 Using standard variant inventory_quantity:', variant.inventory_quantity);
-      return variant.inventory_quantity || 0;
-    }
-    
-    // Final fallback
-    console.log('🔍 Using direct inventory_quantity:', product.inventory_quantity);
-    return product.inventory_quantity || 0;
+    // Use stock_quantity directly from products table
+    return product.stock_quantity || 0;
   };
 
-  // Helper function to get product price from variants
+  // Helper function to get product price from products table
   const getProductPrice = (product) => {
-    console.log('🔍 Getting price for product:', product.title);
-    
-    // Check if we have first_variant with new pricing structure
-    if (product.first_variant && product.first_variant.pricing) {
-      console.log('🔍 Using first_variant pricing:', product.first_variant.pricing);
-      return product.first_variant.pricing.amount;
-    }
-    
-    // Fallback to first_variant calculated_price (old structure)
-    if (product.first_variant && product.first_variant.calculated_price) {
-      console.log('🔍 Using first_variant calculated_price (old):', product.first_variant.calculated_price);
-      return product.first_variant.calculated_price.calculated_amount;
-    }
-    
-    // Fallback to standard variants array
-    if (product.variants && product.variants.length > 0) {
-      const variant = product.variants[0];
-      console.log('🔍 Using standard variant pricing:', variant.pricing);
-      if (variant.pricing) {
-        return variant.pricing.amount;
-      }
-      if (variant.calculated_price) {
-        return variant.calculated_price.calculated_amount;
-      }
-    }
-    
-    console.log('🔍 Using fallback price:', product.price);
-    return product.price || 0;
+    // Use price directly from products table (already in PHP/PHP format, not cents)
+    return parseFloat(product.price) || 0;
   };
 
-  // Helper function to get SKU from variants
+  // Helper function to get SKU from products table
   const getProductSKU = (product) => {
-    // Check if we have first_variant (custom backend structure)
-    if (product.first_variant && product.first_variant.sku) {
-      return product.first_variant.sku;
-    }
-    
-    // Fallback to standard variants array
-    if (product.variants && product.variants.length > 0) {
-      return product.variants[0].sku || 'N/A';
-    }
-    
-    return product.handle || 'N/A';
+    // Use sku directly from products table
+    return product.sku || 'N/A';
   };
 
   const getStockStatus = (quantity) => {
@@ -160,8 +107,8 @@ export default function SellerInventoryPage() {
       return quantity > 0 && quantity < 10;
     }).length;
     const totalValue = products.reduce((total, product) => {
-      const price = getProductPrice(product);
-      const quantity = getInventoryQuantity(product);
+      const price = parseFloat(product.price) || 0;
+      const quantity = product.stock_quantity || 0;
       return total + (price * quantity);
     }, 0);
 
@@ -238,7 +185,7 @@ export default function SellerInventoryPage() {
                 {new Intl.NumberFormat('en-PH', {
                   style: 'currency',
                   currency: 'PHP'
-                }).format(stats.totalValue / 100)}
+                }).format(stats.totalValue)}
               </h4>
               <small>Total Value</small>
             </div>
@@ -326,11 +273,21 @@ export default function SellerInventoryPage() {
                         <td>
                           <div className="d-flex align-items-center">
                             {(() => {
-                            const productImage = product.thumbnail || 
-                                               (product.images && product.images.length > 0 ? product.images[0].url : null);
-                            return productImage ? (
+                            // Get image from thumbnail or first image
+                            let productImage = product.thumbnail;
+                            if (!productImage && product.images && product.images.length > 0) {
+                              // Handle both array of strings and array of objects
+                              const firstImage = product.images[0];
+                              productImage = typeof firstImage === 'string' ? firstImage : firstImage.url || firstImage;
+                            }
+                            const imageUrl = productImage 
+                              ? (productImage.startsWith('http') 
+                                  ? productImage 
+                                  : `http://localhost:8080/S2EH/s2e-backend${productImage}`)
+                              : null;
+                            return imageUrl ? (
                               <img
-                                src={productImage}
+                                src={imageUrl}
                                 alt={product.title}
                                 className="rounded me-3"
                                 style={{ width: '50px', height: '50px', objectFit: 'cover' }}
@@ -365,22 +322,18 @@ export default function SellerInventoryPage() {
                           {new Intl.NumberFormat('en-PH', {
                             style: 'currency',
                             currency: 'PHP'
-                          }).format(productPrice / 100)}
+                          }).format(productPrice)}
                         </td>
                         <td>
                           <strong>
                             {new Intl.NumberFormat('en-PH', {
                               style: 'currency',
                               currency: 'PHP'
-                            }).format(totalValue / 100)}
+                            }).format(totalValue)}
                           </strong>
                         </td>
                         <td>
-                          <span className={`badge ${
-                            product.status === 'published' ? 'bg-success' :
-                            product.status === 'draft' ? 'bg-secondary' :
-                            product.status === 'proposed' ? 'bg-warning' : 'bg-danger'
-                          }`}>
+                          <span style={{ color: '#28a745', fontWeight: '600', textTransform: 'capitalize' }}>
                             {product.status}
                           </span>
                         </td>
@@ -429,7 +382,7 @@ export default function SellerInventoryPage() {
                         required
                         min="0"
                       />
-                      <small className="text-muted">Current: {selectedProduct.inventory_quantity || 0}</small>
+                      <small className="text-muted">Current: {selectedProduct.stock_quantity || 0}</small>
                     </div>
                     <div className="col-md-6 mb-3">
                       <label className="form-label">Product Status</label>
@@ -451,12 +404,12 @@ export default function SellerInventoryPage() {
                     <strong>Current Value:</strong> {new Intl.NumberFormat('en-PH', {
                       style: 'currency',
                       currency: 'PHP'
-                    }).format(((selectedProduct.price || 0) * (selectedProduct.inventory_quantity || 0)) / 100)}
+                    }).format((parseFloat(selectedProduct.price) || 0) * (selectedProduct.stock_quantity || 0))}
                     <br />
                     <strong>New Value:</strong> {new Intl.NumberFormat('en-PH', {
                       style: 'currency',
                       currency: 'PHP'
-                    }).format(((selectedProduct.price || 0) * updateData.inventory_quantity) / 100)}
+                    }).format((parseFloat(selectedProduct.price) || 0) * parseFloat(updateData.inventory_quantity || 0))}
                   </div>
                 </div>
                 <div className="modal-footer">

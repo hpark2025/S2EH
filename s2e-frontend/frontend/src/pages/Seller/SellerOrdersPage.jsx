@@ -156,16 +156,47 @@ export default function SellerOrdersPage() {
   };
 
   const getStatusBadge = (status) => {
+    const normalizedStatus = (status || 'pending').toLowerCase();
     const statusClasses = {
-      'pending': 'bg-warning',
-      'confirmed': 'bg-info',
-      'processing': 'bg-primary',
-      'shipped': 'bg-success',
-      'delivered': 'bg-success',
-      'cancelled': 'bg-danger',
-      'returned': 'bg-secondary'
+      'pending': 'bg-warning text-dark',
+      'confirmed': 'bg-info text-white',
+      'processing': 'bg-primary text-white',
+      'shipped': 'bg-info text-white',
+      'delivered': 'bg-success text-white',
+      'cancelled': 'bg-danger text-white',
+      'returned': 'bg-secondary text-white',
+      'completed': 'bg-success text-white'
     };
-    return statusClasses[status] || 'bg-secondary';
+    return statusClasses[normalizedStatus] || 'bg-secondary text-white';
+  };
+
+  const getStatusStyle = (status) => {
+    const normalizedStatus = (status || 'pending').toLowerCase();
+    const baseStyle = { 
+      padding: '6px 12px', 
+      fontWeight: '500', 
+      display: 'inline-block',
+      borderRadius: '0.375rem',
+      fontSize: '0.875em',
+      lineHeight: '1',
+      textAlign: 'center',
+      verticalAlign: 'baseline',
+      whiteSpace: 'nowrap'
+    };
+    
+    if (normalizedStatus === 'delivered' || normalizedStatus === 'completed') {
+      return { ...baseStyle, backgroundColor: '#28a745', color: '#ffffff' };
+    } else if (normalizedStatus === 'pending') {
+      return { ...baseStyle, backgroundColor: '#ffc107', color: '#000000' };
+    } else if (normalizedStatus === 'processing') {
+      return { ...baseStyle, backgroundColor: '#0d6efd', color: '#ffffff' };
+    } else if (normalizedStatus === 'shipped' || normalizedStatus === 'confirmed') {
+      return { ...baseStyle, backgroundColor: '#0dcaf0', color: '#000000' };
+    } else if (normalizedStatus === 'cancelled') {
+      return { ...baseStyle, backgroundColor: '#dc3545', color: '#ffffff' };
+    }
+    
+    return baseStyle;
   };
 
   const formatPrice = (price) => {
@@ -436,9 +467,27 @@ export default function SellerOrdersPage() {
                         <strong>{formatPrice(order.total)}</strong>
                       </td>
                       <td>
-                        <span className={`badge ${getStatusBadge(order.status)}`}>
-                          {order.status?.toUpperCase() || 'PENDING'}
-                        </span>
+                        {(() => {
+                          const normalizedStatus = (order.status || '').toLowerCase();
+                          const isDelivered = normalizedStatus === 'delivered' || normalizedStatus === 'completed';
+                          
+                          if (isDelivered) {
+                            return (
+                              <span style={{ color: '#28a745', fontWeight: '600' }}>
+                                DELIVERED
+                              </span>
+                            );
+                          }
+                          
+                          return (
+                            <span 
+                              className={`badge ${getStatusBadge(order.status)}`}
+                              style={getStatusStyle(order.status)}
+                            >
+                              {(order.status || 'PENDING').toUpperCase()}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td>
                         {order.created_at ? new Date(order.created_at).toLocaleDateString() : 'N/A'}
@@ -535,7 +584,10 @@ export default function SellerOrdersPage() {
                   <div className="col-md-6">
                     <h6>Order Information</h6>
                     <p>
-                      <strong>Status:</strong> <span className={`badge ${getStatusBadge(selectedOrder.status)}`}>{selectedOrder.status}</span><br />
+                      <strong>Status:</strong> <span 
+                        className={`badge ${getStatusBadge(selectedOrder.status)}`}
+                        style={getStatusStyle(selectedOrder.status)}
+                      >{(selectedOrder.status || 'PENDING').toUpperCase()}</span><br />
                       <strong>Date:</strong> {new Date(selectedOrder.created_at).toLocaleString()}<br />
                       <strong>Total:</strong> {formatPrice(selectedOrder.total)}
                     </p>

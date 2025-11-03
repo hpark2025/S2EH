@@ -95,6 +95,9 @@ RewriteRule ^api/users/?$ api/users/index.php [L,QSA]
 # Seller routes
 RewriteRule ^api/seller/test/?$ api/seller/test.php [L,QSA]
 RewriteRule ^api/seller/products-test/?$ api/seller/products-test.php [L,QSA]
+RewriteRule ^api/seller/stats/?$ api/seller/stats.php [L,QSA]
+RewriteRule ^api/seller/customers/?$ api/seller/customers.php [L,QSA]
+RewriteRule ^api/seller/avatar/?$ api/seller/avatar.php [L,QSA]
 RewriteRule ^api/seller/me/?$ api/seller/me.php [L,QSA]
 # Seller products routes (specific routes MUST come before general route)
 RewriteCond %{REQUEST_METHOD} PUT [OR]

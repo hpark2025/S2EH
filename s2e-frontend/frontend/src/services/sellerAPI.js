@@ -26,6 +26,49 @@ export const sellerAPI = {
     }
   },
 
+  // Get seller stats from database
+  getStats: async () => {
+    try {
+      console.log('📡 Fetching seller stats from PHP backend...');
+      const response = await api.get('/api/seller/stats');
+      console.log('✅ Seller stats:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Failed to fetch seller stats:', error);
+      throw error;
+    }
+  },
+
+  // Upload seller avatar
+  uploadAvatar: async (file) => {
+    try {
+      console.log('📤 Uploading seller avatar...');
+      const formData = new FormData();
+      formData.append('avatar', file);
+      
+      // Let axios handle Content-Type automatically for FormData
+      const response = await api.post('/api/seller/avatar', formData);
+      console.log('✅ Avatar uploaded:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Failed to upload avatar:', error);
+      throw error;
+    }
+  },
+
+  // Get seller customers
+  getCustomers: async () => {
+    try {
+      console.log('📡 Fetching seller customers...');
+      const response = await api.get('/api/seller/customers');
+      console.log('✅ Seller customers:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Failed to fetch customers:', error);
+      throw error;
+    }
+  },
+
   // Products management
   products: {
     // Get seller's products
@@ -164,13 +207,30 @@ export const sellerAPI = {
 
   // Orders management
   orders: {
-    // Get seller's orders
+    // Get seller's orders (uses /api/orders which handles seller orders based on user_type)
     getOrders: async (params = {}) => {
       try {
-        const response = await api.get('/seller/orders', { params });
-        return response.data;
+        console.log('📦 Fetching seller orders from /api/orders...');
+        const response = await api.get('/api/orders', { params });
+        console.log('✅ Seller orders response:', response.data);
+        // Backend returns { success: true, data: { orders: [...] } }
+        // Axios unwraps to response.data = { success: true, data: { orders: [...] } }
+        const ordersData = response.data?.data || response.data;
+        const orders = Array.isArray(ordersData) 
+          ? ordersData 
+          : (ordersData?.orders || []);
+        console.log('✅ Extracted orders:', orders.length, 'orders');
+        // Return in consistent format matching what dashboard expects
+        return {
+          orders: orders
+        };
       } catch (error) {
-        console.error('Failed to fetch seller orders:', error);
+        console.error('❌ Failed to fetch seller orders:', error);
+        console.error('❌ Error details:', {
+          status: error.response?.status,
+          data: error.response?.data,
+          message: error.message
+        });
         throw error;
       }
     },
@@ -178,8 +238,14 @@ export const sellerAPI = {
     // Get single order
     getOrder: async (id) => {
       try {
-        const response = await api.get(`/seller/orders/${id}`);
-        return response.data;
+        // Filter orders from /api/orders by ID
+        const response = await api.get('/api/orders');
+        const orders = Array.isArray(response.data) ? response.data : response.data.orders || [];
+        const order = orders.find(o => o.id == id || o.order_number == id);
+        if (!order) {
+          throw new Error('Order not found');
+        }
+        return order;
       } catch (error) {
         console.error('Failed to fetch order:', error);
         throw error;

@@ -235,8 +235,8 @@ export default function SellerLoginPage() {
               </>
             ) : (
               <>
-                <i className="bi bi-box-arrow-in-right me-2"></i>
-                LOG IN TO SELLER CENTER
+               
+                LOGIN
               </>
             )}
           </button>
@@ -249,17 +249,7 @@ export default function SellerLoginPage() {
           </NavLink>
         </div>
 
-        <div className="text-center mb-4">
-          <button
-            type="button"
-            onClick={handleGuestLogin}
-            className="btn btn-outline-secondary"
-            disabled={isLoading}
-          >
-            <i className="bi bi-person-fill-lock me-2"></i>
-            Guest Login
-          </button>
-        </div>
+       
 
         <hr className="seller-divider my-2" />
 

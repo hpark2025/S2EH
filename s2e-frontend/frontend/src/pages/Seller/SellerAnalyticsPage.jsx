@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-hot-toast';
+import { Chart } from 'chart.js/auto';
 import { sellerAPI } from '../../services/sellerAPI';
 
 export default function SellerAnalyticsPage() {
@@ -12,6 +13,8 @@ export default function SellerAnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('30d');
   const [selectedMetric, setSelectedMetric] = useState('revenue');
+  const revenueChartRef = useRef(null);
+  const revenueChartInstance = useRef(null);
 
   useEffect(() => {
     loadAnalyticsData();
@@ -21,15 +24,15 @@ export default function SellerAnalyticsPage() {
     try {
       setLoading(true);
       
-      const [revenueResponse, ordersResponse, productsResponse, customersResponse] = await Promise.all([
-        sellerAPI.analytics.getSalesData({ period: timeRange }),
-        sellerAPI.orders.getOrders({ period: timeRange }),
+      // Fetch real-time data from orders, products, and customers
+      const [ordersResponse, productsResponse, customersResponse] = await Promise.all([
+        sellerAPI.orders.getOrders(),
         sellerAPI.products.getProducts(),
         sellerAPI.customers.getCustomers()
       ]);
 
       setAnalyticsData({
-        revenue: revenueResponse.data || [],
+        revenue: [], // Not used, will calculate from orders
         orders: ordersResponse.orders || [],
         products: productsResponse.products || [],
         customers: customersResponse.customers || []
@@ -47,36 +50,42 @@ export default function SellerAnalyticsPage() {
     return new Intl.NumberFormat('en-PH', {
       style: 'currency',
       currency: 'PHP'
-    }).format(price / 100);
+    }).format(price);
   };
 
   const getRevenueData = () => {
     const now = new Date();
     const days = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 365;
     const revenueByDay = {};
+    const labels = [];
 
     // Initialize all days with 0 revenue
     for (let i = days - 1; i >= 0; i--) {
       const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
       const dateStr = date.toISOString().split('T')[0];
+      const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       revenueByDay[dateStr] = 0;
+      labels.push(formattedDate);
     }
 
-    // Add actual revenue data
+    // Add actual revenue data from delivered/completed orders
     analyticsData.orders
-      .filter(order => order.status === 'delivered')
+      .filter(order => {
+        const status = (order.status || '').toLowerCase();
+        return status === 'delivered' || status === 'completed';
+      })
       .forEach(order => {
         const orderDate = new Date(order.created_at).toISOString().split('T')[0];
-        if (revenueByDay[orderDate] !== undefined) {
-          revenueByDay[orderDate] += order.total || 0;
+        if (revenueByDay.hasOwnProperty(orderDate)) {
+          revenueByDay[orderDate] += parseFloat(order.total || 0);
         }
       });
 
-    return Object.entries(revenueByDay).map(([date, revenue]) => ({
-      date,
-      revenue,
-      formattedDate: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    }));
+    return {
+      labels: labels,
+      data: Object.values(revenueByDay),
+      revenueByDay: revenueByDay
+    };
   };
 
   const getOrderStatusData = () => {
@@ -95,17 +104,25 @@ export default function SellerAnalyticsPage() {
     const productSales = {};
     
     analyticsData.orders.forEach(order => {
-      order.items?.forEach(item => {
-        if (!productSales[item.product_id]) {
-          productSales[item.product_id] = {
-            title: item.title,
-            quantity: 0,
-            revenue: 0
-          };
-        }
-        productSales[item.product_id].quantity += item.quantity;
-        productSales[item.product_id].revenue += item.unit_price * item.quantity;
-      });
+      if (order.items && Array.isArray(order.items)) {
+        order.items.forEach(item => {
+          const productId = item.product_id || item.productId;
+          const productTitle = item.product_title || item.title || item.productTitle || 'Unknown Product';
+          const quantity = parseInt(item.quantity || 0);
+          const unitPrice = parseFloat(item.unit_price || item.unitPrice || 0);
+          const revenue = quantity * unitPrice;
+          
+          if (!productSales[productId]) {
+            productSales[productId] = {
+              title: productTitle,
+              quantity: 0,
+              revenue: 0
+            };
+          }
+          productSales[productId].quantity += quantity;
+          productSales[productId].revenue += revenue;
+        });
+      }
     });
 
     return Object.values(productSales)
@@ -126,11 +143,23 @@ export default function SellerAnalyticsPage() {
   };
 
   const getTotalStats = () => {
-    const totalRevenue = analyticsData.orders
-      .filter(order => order.status === 'delivered')
-      .reduce((total, order) => total + (order.total || 0), 0);
+    // Filter by time range
+    const now = new Date();
+    const timeRangeDays = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 365;
+    const startDate = new Date(now.getTime() - timeRangeDays * 24 * 60 * 60 * 1000);
+    
+    const recentOrders = analyticsData.orders.filter(order => 
+      new Date(order.created_at) >= startDate
+    );
 
-    const totalOrders = analyticsData.orders.length;
+    const totalRevenue = recentOrders
+      .filter(order => {
+        const status = (order.status || '').toLowerCase();
+        return status === 'delivered' || status === 'completed';
+      })
+      .reduce((total, order) => total + parseFloat(order.total || 0), 0);
+
+    const totalOrders = recentOrders.length;
     const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
     const conversionRate = analyticsData.customers.length > 0 ? 
       (totalOrders / analyticsData.customers.length) * 100 : 0;
@@ -148,6 +177,72 @@ export default function SellerAnalyticsPage() {
   const revenueData = getRevenueData();
   const orderStatusData = getOrderStatusData();
   const topProducts = getTopProducts();
+
+  // Initialize revenue chart
+  useEffect(() => {
+    if (!revenueChartRef.current || revenueData.labels.length === 0 || revenueData.data.every(d => d === 0)) return;
+
+    // Destroy existing chart
+    if (revenueChartInstance.current) {
+      revenueChartInstance.current.destroy();
+    }
+
+    // Create line chart
+    const ctx = revenueChartRef.current.getContext('2d');
+    revenueChartInstance.current = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: revenueData.labels,
+        datasets: [{
+          label: 'Revenue (₱)',
+          data: revenueData.data,
+          borderColor: 'rgba(40, 167, 69, 1)',
+          backgroundColor: 'rgba(40, 167, 69, 0.1)',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.4,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: 'rgba(40, 167, 69, 1)',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: {
+            display: true,
+            position: 'top'
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return 'Revenue: ' + formatPrice(context.parsed.y);
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: function(value) {
+                return '₱' + value.toLocaleString();
+              }
+            }
+          }
+        }
+      }
+    });
+
+    return () => {
+      if (revenueChartInstance.current) {
+        revenueChartInstance.current.destroy();
+      }
+    };
+  }, [revenueData, timeRange]);
 
   if (loading) {
     return (
@@ -231,37 +326,13 @@ export default function SellerAnalyticsPage() {
               <h5 className="mb-0">Revenue Trend</h5>
             </div>
             <div className="card-body">
-              {revenueData.length === 0 ? (
+              {revenueData.labels.length === 0 || revenueData.data.every(d => d === 0) ? (
                 <div className="text-center py-5">
                   <i className="bi bi-graph-up display-4 text-muted"></i>
                   <p className="text-muted mt-2">No revenue data available</p>
                 </div>
               ) : (
-                <div className="revenue-chart">
-                  <div className="d-flex justify-content-between align-items-end" style={{ height: '200px' }}>
-                    {revenueData.map((data, index) => {
-                      const maxRevenue = Math.max(...revenueData.map(d => d.revenue));
-                      const height = maxRevenue > 0 ? (data.revenue / maxRevenue) * 100 : 0;
-                      
-                      return (
-                        <div key={index} className="d-flex flex-column align-items-center" style={{ flex: 1 }}>
-                          <div 
-                            className="bg-primary rounded-top"
-                            style={{ 
-                              height: `${height}%`, 
-                              width: '20px',
-                              minHeight: data.revenue > 0 ? '4px' : '0px'
-                            }}
-                            title={`${data.formattedDate}: ${formatPrice(data.revenue)}`}
-                          ></div>
-                          <small className="text-muted mt-2" style={{ fontSize: '0.7rem' }}>
-                            {data.formattedDate}
-                          </small>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                <canvas ref={revenueChartRef} style={{ maxHeight: '300px' }}></canvas>
               )}
             </div>
           </div>
@@ -370,45 +441,6 @@ export default function SellerAnalyticsPage() {
                 <div className="col-6">
                   <h3 className="text-warning">{formatPrice(stats.avgOrderValue)}</h3>
                   <small className="text-muted">Avg Order Value</small>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Export Options */}
-      <div className="row">
-        <div className="col-12">
-          <div className="card">
-            <div className="card-header">
-              <h5 className="mb-0">Export Data</h5>
-            </div>
-            <div className="card-body">
-              <div className="row">
-                <div className="col-md-3 mb-3">
-                  <button className="btn btn-outline-primary w-100">
-                    <i className="bi bi-download me-2"></i>
-                    Export Revenue
-                  </button>
-                </div>
-                <div className="col-md-3 mb-3">
-                  <button className="btn btn-outline-success w-100">
-                    <i className="bi bi-download me-2"></i>
-                    Export Orders
-                  </button>
-                </div>
-                <div className="col-md-3 mb-3">
-                  <button className="btn btn-outline-info w-100">
-                    <i className="bi bi-download me-2"></i>
-                    Export Products
-                  </button>
-                </div>
-                <div className="col-md-3 mb-3">
-                  <button className="btn btn-outline-warning w-100">
-                    <i className="bi bi-download me-2"></i>
-                    Export All Data
-                  </button>
                 </div>
               </div>
             </div>

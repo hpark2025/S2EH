@@ -40,20 +40,22 @@ try {
     $database = new Database();
     $db = $database->getConnection();
     
-    // Verify the address belongs to the user
-    $checkQuery = "SELECT id FROM addresses WHERE id = :id AND user_id = :user_id";
+    // Verify the address belongs to the user or seller
+    $checkQuery = "SELECT id, user_id, seller_id FROM addresses WHERE id = :id AND (user_id = :user_id OR seller_id = :seller_id)";
     $checkStmt = $db->prepare($checkQuery);
     $checkStmt->bindParam(':id', $addressId);
     $checkStmt->bindParam(':user_id', $user['id']);
+    $checkStmt->bindParam(':seller_id', $user['id']);
     $checkStmt->execute();
+    $addressCheck = $checkStmt->fetch(PDO::FETCH_ASSOC);
     
-    if ($checkStmt->rowCount() === 0) {
+    if (!$addressCheck) {
         Response::error('Address not found or unauthorized', 404);
     }
     
     // Build update query dynamically based on provided fields
     $updateFields = [];
-    $params = [':id' => $addressId, ':user_id' => $user['id']];
+    $params = [':id' => $addressId];
     
     if (isset($data['street'])) {
         $updateFields[] = "address_line_1 = :address_line_1";
@@ -65,6 +67,11 @@ try {
         $params[':barangay'] = $data['barangay'];
     }
     
+    if (isset($data['barangayCode'])) {
+        $updateFields[] = "barangay_code = :barangay_code";
+        $params[':barangay_code'] = $data['barangayCode'];
+    }
+    
     if (isset($data['municipality'])) {
         $updateFields[] = "municipality = :municipality";
         $updateFields[] = "city = :city";
@@ -72,14 +79,24 @@ try {
         $params[':city'] = $data['municipality'];
     }
     
+    if (isset($data['municipalityCode'])) {
+        $updateFields[] = "municipality_code = :municipality_code";
+        $params[':municipality_code'] = $data['municipalityCode'];
+    }
+    
     if (isset($data['province'])) {
         $updateFields[] = "province = :province";
         $params[':province'] = $data['province'];
     }
     
-    if (isset($data['postalCode'])) {
+    if (isset($data['provinceCode'])) {
+        $updateFields[] = "province_code = :province_code";
+        $params[':province_code'] = $data['provinceCode'];
+    }
+    
+    if (isset($data['postalCode']) || isset($data['postal_code'])) {
         $updateFields[] = "postal_code = :postal_code";
-        $params[':postal_code'] = $data['postalCode'];
+        $params[':postal_code'] = $data['postalCode'] ?? $data['postal_code'];
     }
     
     if (empty($updateFields)) {
@@ -89,9 +106,12 @@ try {
     // Add updated_at
     $updateFields[] = "updated_at = CURRENT_TIMESTAMP";
     
-    // Update address
-    $query = "UPDATE addresses SET " . implode(', ', $updateFields) . " 
-              WHERE id = :id AND user_id = :user_id";
+    // Update address - check both user_id and seller_id
+    $whereClause = "WHERE id = :id AND (user_id = :user_id OR seller_id = :seller_id)";
+    $params[':user_id'] = $user['id'];
+    $params[':seller_id'] = $user['id'];
+    
+    $query = "UPDATE addresses SET " . implode(', ', $updateFields) . " " . $whereClause;
     
     $stmt = $db->prepare($query);
     

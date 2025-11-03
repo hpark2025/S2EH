@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { Chart } from 'chart.js/auto';
 import { sellerAPI } from '../../services/sellerAPI';
 
 export default function SellerDashboardPage() {
+  const navigate = useNavigate();
   const [dashboardData, setDashboardData] = useState({
     products: [],
     orders: [],
@@ -16,6 +19,10 @@ export default function SellerDashboardPage() {
   });
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('30d');
+  const statusChartRef = useRef(null);
+  const revenueChartRef = useRef(null);
+  const statusChartInstance = useRef(null);
+  const revenueChartInstance = useRef(null);
 
   useEffect(() => {
     loadDashboardData();
@@ -71,7 +78,7 @@ export default function SellerDashboardPage() {
 
     const totalProducts = products.length;
     const lowStockProducts = products.filter(product => 
-      (product.inventory_quantity || 0) < 10
+      (product.stock_quantity || 0) < 10
     ).length;
 
     return {
@@ -88,7 +95,7 @@ export default function SellerDashboardPage() {
     return new Intl.NumberFormat('en-PH', {
       style: 'currency',
       currency: 'PHP'
-    }).format(price / 100);
+    }).format(price);
   };
 
   const getRecentOrders = () => {
@@ -99,7 +106,7 @@ export default function SellerDashboardPage() {
 
   const getLowStockProducts = () => {
     return dashboardData.products
-      .filter(product => (product.inventory_quantity || 0) < 10)
+      .filter(product => (product.stock_quantity || 0) < 10)
       .slice(0, 5);
   };
 
@@ -112,18 +119,136 @@ export default function SellerDashboardPage() {
   };
 
   const getRevenueByMonth = () => {
-    const monthlyRevenue = {};
+    const now = new Date();
+    const months = [];
+    const revenueByMonth = {};
+    
+    // Get last 6 months
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const monthLabel = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      months.push({ key: monthKey, label: monthLabel });
+      revenueByMonth[monthKey] = 0;
+    }
+    
+    // Calculate revenue for each month from delivered orders
     dashboardData.orders
-      .filter(order => order.status === 'delivered')
+      .filter(order => {
+        const status = (order.status || '').toLowerCase();
+        return status === 'delivered' || status === 'completed';
+      })
       .forEach(order => {
-        const month = new Date(order.created_at).toLocaleDateString('en-US', { 
-          year: 'numeric', 
-          month: 'short' 
-        });
-        monthlyRevenue[month] = (monthlyRevenue[month] || 0) + (order.total || 0);
+        if (order.created_at) {
+          const orderDate = new Date(order.created_at);
+          const monthKey = `${orderDate.getFullYear()}-${String(orderDate.getMonth() + 1).padStart(2, '0')}`;
+          if (revenueByMonth.hasOwnProperty(monthKey)) {
+            revenueByMonth[monthKey] += parseFloat(order.total || 0);
+          }
+        }
       });
-    return monthlyRevenue;
+    
+    return {
+      labels: months.map(m => m.label),
+      data: months.map(m => revenueByMonth[m.key] || 0)
+    };
   };
+
+  // Initialize charts
+  useEffect(() => {
+    if (!statusChartRef.current || !revenueChartRef.current || dashboardData.orders.length === 0) return;
+
+    const statusData = getOrderStatusDistribution();
+    const revenueData = getRevenueByMonth();
+
+    // Destroy existing charts
+    if (statusChartInstance.current) {
+      statusChartInstance.current.destroy();
+    }
+    if (revenueChartInstance.current) {
+      revenueChartInstance.current.destroy();
+    }
+
+    // Create Order Status Distribution Pie Chart
+    if (Object.keys(statusData).length > 0) {
+      const statusCtx = statusChartRef.current.getContext('2d');
+      statusChartInstance.current = new Chart(statusCtx, {
+        type: 'doughnut',
+        data: {
+          labels: Object.keys(statusData).map(s => s.charAt(0).toUpperCase() + s.slice(1)),
+          datasets: [{
+            label: 'Orders',
+            data: Object.values(statusData),
+            backgroundColor: [
+              'rgba(255, 99, 132, 0.8)',
+              'rgba(54, 162, 235, 0.8)',
+              'rgba(255, 206, 86, 0.8)',
+              'rgba(75, 192, 192, 0.8)',
+              'rgba(153, 102, 255, 0.8)',
+              'rgba(255, 159, 64, 0.8)',
+              'rgba(40, 167, 69, 0.8)'
+            ],
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: {
+              position: 'bottom'
+            }
+          }
+        }
+      });
+    }
+
+    // Create Revenue by Month Bar Chart
+    if (revenueData.labels.length > 0 && revenueData.data.some(d => d > 0)) {
+      const revenueCtx = revenueChartRef.current.getContext('2d');
+      revenueChartInstance.current = new Chart(revenueCtx, {
+        type: 'bar',
+        data: {
+          labels: revenueData.labels,
+          datasets: [{
+            label: 'Revenue (₱)',
+            data: revenueData.data,
+            backgroundColor: 'rgba(40, 167, 69, 0.8)',
+            borderColor: 'rgba(40, 167, 69, 1)',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function(value) {
+                  return '₱' + value.toLocaleString();
+                }
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              display: false
+            }
+          }
+        }
+      });
+    }
+
+    return () => {
+      if (statusChartInstance.current) {
+        statusChartInstance.current.destroy();
+      }
+      if (revenueChartInstance.current) {
+        revenueChartInstance.current.destroy();
+      }
+    };
+  }, [dashboardData, timeRange]);
 
   if (loading) {
     return (
@@ -212,8 +337,8 @@ export default function SellerDashboardPage() {
               <i className="bi bi-graph-up display-6"></i>
               <h4 className="mt-2">
                 {dashboardData.analytics.totalOrders > 0 
-                  ? Math.round((dashboardData.analytics.totalRevenue / dashboardData.analytics.totalOrders) / 100)
-                  : 0
+                  ? formatPrice(Math.round(dashboardData.analytics.totalRevenue / dashboardData.analytics.totalOrders))
+                  : formatPrice(0)
                 }
               </h4>
               <small>Avg Order Value</small>
@@ -226,11 +351,8 @@ export default function SellerDashboardPage() {
         {/* Recent Orders */}
         <div className="col-md-6 mb-4">
           <div className="card">
-            <div className="card-header d-flex justify-content-between align-items-center">
+            <div className="card-header">
               <h5 className="mb-0">Recent Orders</h5>
-              <a href="/seller/orders" className="btn btn-sm btn-outline-primary">
-                View All
-              </a>
             </div>
             <div className="card-body">
               {getRecentOrders().length === 0 ? (
@@ -243,9 +365,14 @@ export default function SellerDashboardPage() {
                   {getRecentOrders().map((order) => (
                     <div key={order.id} className="list-group-item d-flex justify-content-between align-items-center">
                       <div>
-                        <div className="fw-bold">#{order.id.slice(-8)}</div>
+                        <div className="fw-bold">#{order.order_number || order.id}</div>
                         <small className="text-muted">
-                          {order.customer?.first_name} {order.customer?.last_name}
+                          {(() => {
+                            const firstName = order.customer?.first_name || order.customer_name || order.first_name || '';
+                            const lastName = order.customer?.last_name || order.last_name || '';
+                            const name = `${firstName} ${lastName}`.trim();
+                            return name || 'Customer';
+                          })()}
                         </small>
                       </div>
                       <div className="text-end">
@@ -268,9 +395,12 @@ export default function SellerDashboardPage() {
           <div className="card">
             <div className="card-header d-flex justify-content-between align-items-center">
               <h5 className="mb-0">Low Stock Alert</h5>
-              <a href="/seller/products" className="btn btn-sm btn-outline-primary">
+              <button 
+                onClick={() => navigate('/seller/products')} 
+                className="btn btn-sm btn-outline-primary"
+              >
                 Manage Products
-              </a>
+              </button>
             </div>
             <div className="card-body">
               {getLowStockProducts().length === 0 ? (
@@ -284,11 +414,11 @@ export default function SellerDashboardPage() {
                     <div key={product.id} className="list-group-item d-flex justify-content-between align-items-center">
                       <div>
                         <div className="fw-bold">{product.title}</div>
-                        <small className="text-muted">SKU: {product.handle}</small>
+                        <small className="text-muted">SKU: {product.sku || 'N/A'}</small>
                       </div>
                       <div className="text-end">
-                        <span className={`badge ${product.inventory_quantity === 0 ? 'bg-danger' : 'bg-warning'}`}>
-                          {product.inventory_quantity || 0} left
+                        <span className={`badge ${product.stock_quantity === 0 ? 'bg-danger' : 'bg-warning'}`}>
+                          {product.stock_quantity || 0} left
                         </span>
                       </div>
                     </div>
@@ -314,16 +444,7 @@ export default function SellerDashboardPage() {
                   <p className="text-muted mt-2">No order data available</p>
                 </div>
               ) : (
-                <div className="row">
-                  {Object.entries(getOrderStatusDistribution()).map(([status, count]) => (
-                    <div key={status} className="col-6 mb-3">
-                      <div className="d-flex justify-content-between align-items-center">
-                        <span className="text-capitalize">{status}</span>
-                        <span className="badge bg-primary">{count}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <canvas ref={statusChartRef} style={{ maxHeight: '300px' }}></canvas>
               )}
             </div>
           </div>
@@ -336,62 +457,17 @@ export default function SellerDashboardPage() {
               <h5 className="mb-0">Revenue by Month</h5>
             </div>
             <div className="card-body">
-              {Object.keys(getRevenueByMonth()).length === 0 ? (
+              {(() => {
+                const revenueData = getRevenueByMonth();
+                return revenueData.labels.length === 0 || revenueData.data.every(d => d === 0);
+              })() ? (
                 <div className="text-center py-3">
                   <i className="bi bi-graph-up display-4 text-muted"></i>
                   <p className="text-muted mt-2">No revenue data available</p>
                 </div>
               ) : (
-                <div className="row">
-                  {Object.entries(getRevenueByMonth()).map(([month, revenue]) => (
-                    <div key={month} className="col-12 mb-2">
-                      <div className="d-flex justify-content-between align-items-center">
-                        <span>{month}</span>
-                        <span className="fw-bold text-success">{formatPrice(revenue)}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <canvas ref={revenueChartRef} style={{ maxHeight: '300px' }}></canvas>
               )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="row">
-        <div className="col-12">
-          <div className="card">
-            <div className="card-header">
-              <h5 className="mb-0">Quick Actions</h5>
-            </div>
-            <div className="card-body">
-              <div className="row">
-                <div className="col-md-3 mb-3">
-                  <a href="/seller/products" className="btn btn-outline-primary w-100">
-                    <i className="bi bi-plus-circle me-2"></i>
-                    Add Product
-                  </a>
-                </div>
-                <div className="col-md-3 mb-3">
-                  <a href="/seller/orders" className="btn btn-outline-success w-100">
-                    <i className="bi bi-receipt me-2"></i>
-                    View Orders
-                  </a>
-                </div>
-                <div className="col-md-3 mb-3">
-                  <a href="/seller/analytics" className="btn btn-outline-info w-100">
-                    <i className="bi bi-graph-up me-2"></i>
-                    View Analytics
-                  </a>
-                </div>
-                <div className="col-md-3 mb-3">
-                  <a href="/seller/profile" className="btn btn-outline-warning w-100">
-                    <i className="bi bi-person me-2"></i>
-                    Update Profile
-                  </a>
-                </div>
-              </div>
             </div>
           </div>
         </div>

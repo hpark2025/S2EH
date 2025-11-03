@@ -13,7 +13,6 @@ import SellerDashboardPage from './pages/Seller/SellerDashboardPage.jsx'
 import SellerProductsPage from './pages/Seller/SellerProductsPage.jsx'
 import SellerOrdersPage from './pages/Seller/SellerOrdersPage.jsx'
 import SellerInventoryPage from './pages/Seller/SellerInventoryPage.jsx'
-import SellerStockLocationsPage from './pages/Seller/SellerStockLocationsPage.jsx'
 import SellerCustomersPage from './pages/Seller/SellerCustomersPage.jsx'
 import SellerMessagesPage from './pages/Seller/SellerMessagesPage.jsx'
 import SellerAnalyticsPage from './pages/Seller/SellerAnalyticsPage.jsx'
@@ -100,7 +99,6 @@ function App() {
           <Route path="products" element={<SellerProductsPage />} />
           <Route path="orders" element={<SellerOrdersPage />} />
           <Route path="inventory" element={<SellerInventoryPage />} />
-          <Route path="stock-locations" element={<SellerStockLocationsPage />} />
           <Route path="customers" element={<SellerCustomersPage />} />
           <Route path="messages" element={<SellerMessagesPage />} />
           <Route path="analytics" element={<SellerAnalyticsPage />} />

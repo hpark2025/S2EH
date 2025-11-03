@@ -30,7 +30,7 @@ export default function SellerSidebar({ collapsed = false }) {
             className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
           >
             <i className="bi bi-box"></i>
-            <span>My Products</span>
+            <span>Products</span>
           </NavLink>
         </div>
         
@@ -51,16 +51,6 @@ export default function SellerSidebar({ collapsed = false }) {
           >
             <i className="bi bi-boxes"></i>
             <span>Inventory</span>
-          </NavLink>
-        </div>
-        
-        <div className="nav-item">
-          <NavLink 
-            to="/seller/stock-locations" 
-            className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
-          >
-            <i className="bi bi-geo-alt"></i>
-            <span>Stock Locations</span>
           </NavLink>
         </div>
         
@@ -120,7 +110,7 @@ export default function SellerSidebar({ collapsed = false }) {
             className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
           >
             <i className="bi bi-person-circle"></i>
-            <span>My Profile</span>
+            <span>Profile</span>
           </NavLink>
         </div>
       </div>
