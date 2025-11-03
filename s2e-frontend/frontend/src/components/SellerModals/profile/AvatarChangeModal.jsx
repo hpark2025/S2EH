@@ -117,8 +117,8 @@ const AvatarChangeModal = ({ show, onClose }) => {
 
   if (isUploaded) {
     return (
-      <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
-        <div className="modal-dialog modal-dialog-centered">
+      <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal-dialog modal-lg">
           <div className="modal-content">
             <div className="modal-body text-center p-4">
               <div className="text-success mb-3">
@@ -134,8 +134,8 @@ const AvatarChangeModal = ({ show, onClose }) => {
   }
 
   return (
-    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
-      <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+      <div className="modal-dialog modal-lg">
         <div className="modal-content">
           <div className="modal-header">
             <h5 className="modal-title">
@@ -295,6 +295,7 @@ const AvatarChangeModal = ({ show, onClose }) => {
                 onClose()
               }}
               disabled={isLoading}
+              style={{ minWidth: '100px' }}
             >
               <i className="bi bi-x-lg me-2"></i>Cancel
             </button>
@@ -303,6 +304,7 @@ const AvatarChangeModal = ({ show, onClose }) => {
               className="btn btn-primary"
               onClick={handleUpload}
               disabled={!selectedFile || isLoading}
+              style={{ minWidth: '150px' }}
             >
               {isLoading ? (
                 <>

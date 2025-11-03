@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { sellerAPI } from '../../services/sellerAPI';
+import SimpleProductForm from './SimpleProductForm';
 
 export default function SellerInventoryPage() {
   const [products, setProducts] = useState([]);
@@ -8,6 +9,7 @@ export default function SellerInventoryPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [updateData, setUpdateData] = useState({
     inventory_quantity: '',
@@ -189,9 +191,12 @@ export default function SellerInventoryPage() {
           >
             <i className="bi bi-arrow-clockwise"></i> Refresh
           </button>
-          <a href="/seller/products" className="btn btn-primary btn-sm">
+          <button 
+            className="btn btn-primary btn-sm"
+            onClick={() => setShowAddModal(true)}
+          >
             <i className="bi bi-plus-circle"></i> Add Product
-          </a>
+          </button>
         </div>
       </div>
 
@@ -286,9 +291,12 @@ export default function SellerInventoryPage() {
               <i className="bi bi-box-seam display-1 text-muted"></i>
               <h4 className="mt-3">No products found</h4>
               <p className="text-muted">Start by adding your first product</p>
-              <a href="/seller/products" className="btn btn-primary">
+              <button 
+                className="btn btn-primary"
+                onClick={() => setShowAddModal(true)}
+              >
                 Add Your First Product
-              </a>
+              </button>
             </div>
           ) : (
             <div className="table-responsive">
@@ -467,6 +475,14 @@ export default function SellerInventoryPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Add Product Modal */}
+      {showAddModal && (
+        <SimpleProductForm
+          onProductCreated={loadProducts}
+          onClose={() => setShowAddModal(false)}
+        />
       )}
     </div>
   );

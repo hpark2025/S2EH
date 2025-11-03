@@ -95,25 +95,8 @@ const EditProfileModal = ({ show, onClose }) => {
   }
 
   return (
-    <div
-      className="modal fade show d-block"
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        zIndex: 1050,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}
-    >
-      <div
-        className="modal-dialog modal-dialog-centered modal-dialog-scrollable"
-        style={{ margin: 0, maxWidth: '800px', width: '90%' }}
-      >
+    <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+      <div className="modal-dialog modal-lg">
         <div className="modal-content">
           <div className="modal-header">
             <h5 className="modal-title">
@@ -413,6 +396,7 @@ const EditProfileModal = ({ show, onClose }) => {
               className="btn btn-secondary"
               onClick={onClose}
               disabled={isLoading}
+              style={{ minWidth: '100px' }}
             >
               <i className="bi bi-x-lg me-2"></i>Cancel
             </button>
@@ -421,6 +405,7 @@ const EditProfileModal = ({ show, onClose }) => {
               className="btn btn-primary"
               onClick={handleSave}
               disabled={isLoading}
+              style={{ minWidth: '150px' }}
             >
               {isLoading ? (
                 <>

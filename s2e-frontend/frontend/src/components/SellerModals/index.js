@@ -54,3 +54,4 @@ export { default as GCashAccountModal } from './settings/GCashAccountModal';
 export { default as AvatarChangeModal } from './profile/AvatarChangeModal';
 export { default as EditProfileModal } from './profile/EditProfileModal';
 export { default as VerificationModal } from './profile/VerificationModal';
+export { default as AddressEditModal } from './profile/AddressEditModal';

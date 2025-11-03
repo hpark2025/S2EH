@@ -194,22 +194,8 @@ const VerificationModal = ({ show, onClose }) => {
 
   if (isSubmitted) {
     return (
-      <div 
-        className="modal fade show d-block" 
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          zIndex: 1050,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}
-      >
-        <div className="modal-dialog modal-dialog-centered">
+      <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal-dialog modal-lg">
           <div className="modal-content">
             <div className="modal-body text-center p-4">
               <div className="text-success mb-3">
@@ -225,22 +211,8 @@ const VerificationModal = ({ show, onClose }) => {
   }
 
   return (
-    <div 
-      className="modal fade show d-block" 
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        zIndex: 1050,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}
-    >
-      <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable" style={{ margin: 0, maxWidth: '900px', width: '90%' }}>
+    <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+      <div className="modal-dialog modal-lg">
         <div className="modal-content">
           <div className="modal-header">
             <h5 className="modal-title">
@@ -553,49 +525,56 @@ const VerificationModal = ({ show, onClose }) => {
               </div>
             )}
           </div>
-          <div className="modal-footer">
-            {activeStep > 1 && (
-              <button 
-                type="button" 
-                className="btn btn-secondary"
-                onClick={() => setActiveStep(activeStep - 1)}
-                disabled={isLoading}
-              >
-                <i className="bi bi-arrow-left me-2"></i>
-                Previous
-              </button>
-            )}
+          <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <div>
+              {activeStep > 1 && (
+                <button 
+                  type="button" 
+                  className="btn btn-secondary"
+                  onClick={() => setActiveStep(activeStep - 1)}
+                  disabled={isLoading}
+                  style={{ minWidth: '100px' }}
+                >
+                  <i className="bi bi-arrow-left me-2"></i>
+                  Previous
+                </button>
+              )}
+            </div>
             
-            {activeStep < 4 ? (
-              <button 
-                type="button" 
-                className="btn btn-primary"
-                onClick={() => setActiveStep(activeStep + 1)}
-                disabled={isLoading}
-              >
-                Next
-                <i className="bi bi-arrow-right ms-2"></i>
-              </button>
-            ) : (
-              <button 
-                type="button" 
-                className="btn btn-success"
-                onClick={handleSubmitVerification}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <span className="spinner-border spinner-border-sm me-2" role="status"></span>
-                    Submitting...
-                  </>
-                ) : (
-                  <>
-                    <i className="bi bi-check-circle me-2"></i>
-                    Submit for Verification
-                  </>
-                )}
-              </button>
-            )}
+            <div>
+              {activeStep < 4 ? (
+                <button 
+                  type="button" 
+                  className="btn btn-primary"
+                  onClick={() => setActiveStep(activeStep + 1)}
+                  disabled={isLoading}
+                  style={{ minWidth: '100px' }}
+                >
+                  Next
+                  <i className="bi bi-arrow-right ms-2"></i>
+                </button>
+              ) : (
+                <button 
+                  type="button" 
+                  className="btn btn-success"
+                  onClick={handleSubmitVerification}
+                  disabled={isLoading}
+                  style={{ minWidth: '200px' }}
+                >
+                  {isLoading ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-check-circle me-2"></i>
+                      Submit for Verification
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
