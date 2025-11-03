@@ -464,9 +464,6 @@ export default function SellerProductsPage() {
                 <button className="btn btn-outline-secondary btn-sm">
                   <i className="bi bi-download"></i> Export
                 </button>
-                <button className="btn btn-outline-secondary btn-sm">
-                  <i className="bi bi-funnel"></i> Filters
-                </button>
               </div>
             </div>
           </div>

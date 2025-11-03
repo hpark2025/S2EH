@@ -289,8 +289,8 @@ export default function SellerDashboardPage() {
         <div className="col-md-2">
           <div className="card bg-primary text-white">
             <div className="card-body text-center">
-              <i className="bi bi-currency-dollar display-6"></i>
-              <h4 className="mt-2">{formatPrice(dashboardData.analytics.totalRevenue)}</h4>
+            <span style={{ fontSize: '2rem', fontWeight: 'bold' }}>₱</span>
+          <h4 className="mt-2">{formatPrice(dashboardData.analytics.totalRevenue)}</h4>
               <small>Total Revenue</small>
             </div>
           </div>

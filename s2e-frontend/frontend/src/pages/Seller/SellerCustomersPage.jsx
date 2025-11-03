@@ -17,6 +17,8 @@ const SellerCustomersPage = () => {
 
   const [activeTab, setActiveTab] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(10)
   
   // Modal states
   const [showViewModal, setShowViewModal] = useState(false)
@@ -65,6 +67,59 @@ const SellerCustomersPage = () => {
       return matchesTab && matchesSearch
     })
   }, [customers, searchTerm, activeTab])
+
+  // Reset to first page when filter/search changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [activeTab, searchTerm])
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedCustomers = filteredCustomers.slice(startIndex, endIndex)
+
+  // Generate page numbers (show max 3 page numbers around current page)
+  const getPageNumbers = () => {
+    const pages = []
+    if (totalPages <= 3) {
+      // Show all pages if 3 or fewer
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i)
+      }
+    } else {
+      // Show current page and 1 page before/after
+      if (currentPage === 1) {
+        pages.push(1, 2, 3)
+      } else if (currentPage === totalPages) {
+        pages.push(totalPages - 2, totalPages - 1, totalPages)
+      } else {
+        pages.push(currentPage - 1, currentPage, currentPage + 1)
+      }
+    }
+    return pages
+  }
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
+
+  const handlePrevious = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
+
+  const handleNext = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
 
   // Calculate stats
   const totalCustomers = customers.length
@@ -389,7 +444,7 @@ const SellerCustomersPage = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredCustomers.map((customer) => (
+                  {paginatedCustomers.map((customer) => (
                   <tr key={customer.id} data-status={customer.status}>
                     <td>
                       <div className="d-flex align-items-center">
@@ -428,27 +483,48 @@ const SellerCustomersPage = () => {
           )}
           
           {/* Custom Pagination - Only show when not loading and has customers */}
-          {!loading && filteredCustomers.length > 0 && (
+          {!loading && filteredCustomers.length > 0 && totalPages > 1 && (
           <div className="pagination-container" style={{display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px 0', borderTop: '1px solid #e0e0e0'}}>
             <nav aria-label="Table pagination">
               <ul className="pagination mb-0">
-                <li className="page-item">
-                  <a className="page-link" href="#" aria-label="Previous">Previous</a>
+                <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                  <button 
+                    className="page-link" 
+                    onClick={handlePrevious}
+                    disabled={currentPage === 1}
+                    aria-label="Previous"
+                    style={{ cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+                  >
+                    Previous
+                  </button>
                 </li>
-                <li className="page-item active">
-                  <a className="page-link" href="#">1</a>
-                </li>
-                <li className="page-item">
-                  <a className="page-link" href="#">2</a>
-                </li>
-                <li className="page-item">
-                  <a className="page-link" href="#">3</a>
-                </li>
-                <li className="page-item">
-                  <a className="page-link" href="#" aria-label="Next">Next</a>
+                {getPageNumbers().map((pageNum) => (
+                  <li key={pageNum} className={`page-item ${currentPage === pageNum ? 'active' : ''}`}>
+                    <button 
+                      className="page-link" 
+                      onClick={() => handlePageChange(pageNum)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      {pageNum}
+                    </button>
+                  </li>
+                ))}
+                <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+                  <button 
+                    className="page-link" 
+                    onClick={handleNext}
+                    disabled={currentPage === totalPages}
+                    aria-label="Next"
+                    style={{ cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
+                  >
+                    Next
+                  </button>
                 </li>
               </ul>
             </nav>
+            <div className="ms-3 text-muted" style={{ fontSize: '14px' }}>
+              Showing {startIndex + 1}-{Math.min(endIndex, filteredCustomers.length)} of {filteredCustomers.length} customers
+            </div>
           </div>
           )}
         </div>

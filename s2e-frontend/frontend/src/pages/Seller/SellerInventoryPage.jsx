@@ -180,7 +180,7 @@ export default function SellerInventoryPage() {
         <div className="col-md-3">
           <div className="card bg-success text-white">
             <div className="card-body text-center">
-              <i className="bi bi-currency-dollar display-6"></i>
+              <span style={{ fontSize: '2rem', fontWeight: 'bold' }}>₱</span>
               <h4 className="mt-2">
                 {new Intl.NumberFormat('en-PH', {
                   style: 'currency',
