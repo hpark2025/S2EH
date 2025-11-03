@@ -5,8 +5,8 @@ function UserConditionalCategoryLink({ children, className = "text-decoration-no
   const { state } = useAppState()
   const { isLoggedIn } = state
   
-  // If user is logged in, go to categories page, otherwise go to login
-  const destination = isLoggedIn ? '/auth/categories' : '/login'
+  // Redirect to products page instead of categories page
+  const destination = isLoggedIn ? '/auth/products' : '/user/products'
   
   return (
     <Link to={destination} className={className} {...props}>

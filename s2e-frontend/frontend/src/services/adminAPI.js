@@ -358,5 +358,34 @@ export const adminAPI = {
         throw error;
       }
     }
+  },
+
+  // Orders management (for Admin Orders Page)
+  orders: {
+    getAll: async () => {
+      try {
+        console.log('📡 Fetching all orders for admin...');
+        const response = await fetchAPI('/orders');
+        console.log('✅ Orders response:', response);
+        return response;
+      } catch (error) {
+        console.error('❌ Failed to fetch orders:', error);
+        throw error;
+      }
+    },
+
+    updateStatus: async (orderId, status) => {
+      try {
+        const response = await fetchAPI(`/orders/update?id=${orderId}`, {
+          method: 'PUT',
+          body: JSON.stringify({ status })
+        });
+        console.log('✅ Order status updated:', response);
+        return response;
+      } catch (error) {
+        console.error('❌ Failed to update order status:', error);
+        throw error;
+      }
+    }
   }
 };

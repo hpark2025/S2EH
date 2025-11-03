@@ -393,7 +393,7 @@ export default function UserProductDetailsPage() {
             </li>
             {product.category && (
               <li className="breadcrumb-item">
-                <Link to={isLoggedIn ? `/auth/category/${product.category.id}` : `/category/${product.category.id}`}>
+                <Link to={isLoggedIn ? `/auth/products` : `/user/products`}>
                   {product.category.name}
                 </Link>
               </li>

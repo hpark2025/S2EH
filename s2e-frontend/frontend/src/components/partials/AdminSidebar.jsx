@@ -61,16 +61,6 @@ export default function AdminSidebar({ collapsed = false }) {
         
         <div className="nav-item">
           <NavLink 
-            to="/admin/categories" 
-            className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
-          >
-            <i className="bi bi-tags"></i>
-            <span>Categories</span>
-          </NavLink>
-        </div>
-        
-        <div className="nav-item">
-          <NavLink 
             to="/admin/messages" 
             className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
           >

@@ -79,12 +79,12 @@ try {
     $shippingAddressId = $data->shipping_address_id ?? null;
     $billingAddressId = $data->billing_address_id ?? $shippingAddressId; // Default to shipping address if not provided
     
-    // Insert order
+    // Insert order - Set payment_status to 'cod' since all orders are COD
     $orderQuery = "INSERT INTO orders 
                    (order_number, user_id, seller_id, status, payment_status, payment_method,
                     subtotal, shipping_fee, tax, discount, total, notes, shipping_address_id, billing_address_id)
                    VALUES
-                   (:order_number, :user_id, :seller_id, 'pending', 'pending', :payment_method,
+                   (:order_number, :user_id, :seller_id, 'pending', 'cod', :payment_method,
                     :subtotal, :shipping_fee, :tax, :discount, :total, :notes, :shipping_address_id, :billing_address_id)";
     
     $orderStmt = $db->prepare($orderQuery);

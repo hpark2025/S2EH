@@ -60,7 +60,6 @@ export default function AdminLayout() {
       '/admin/orders': 'Orders Management',
       '/admin/users': 'Users Management',
       '/admin/producers': 'Producers Management',
-      '/admin/categories': 'Categories Management',
       '/admin/messages': 'Messages',
       '/admin/reports': 'Reports & Analytics'
     }

@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
+import { toast } from 'react-hot-toast'
 import { 
   EditOrderModal, 
   ViewOrderModal, 
@@ -7,6 +8,8 @@ import {
   ProcessRefundModal 
 } from '../../components/AdminModals/AdminOrdersPage'
 import usePagination from '../../components/Pagination'
+import { adminAPI } from '../../services/adminAPI'
+import { getLocationCoordinates } from '../../services/geocodingService'
 
 // Import for Excel export
 import * as XLSX from 'xlsx'
@@ -18,7 +21,7 @@ import 'jspdf-autotable'
 const exportToExcel = (data, filename = 'orders') => {
   try {
     const worksheet = XLSX.utils.json_to_sheet(data.map(order => ({
-      'Order ID': order.id,
+      'Order ID': order.order_number || order.id,
       'Customer Name': order.customer.name,
       'Customer Phone': order.customer.phone,
       'Main Product': order.products.main,
@@ -44,7 +47,7 @@ const exportToExcel = (data, filename = 'orders') => {
 const exportToCSV = (data, filename = 'orders') => {
   try {
     const csvData = data.map(order => ({
-      'Order ID': order.id,
+      'Order ID': order.order_number || order.id,
       'Customer Name': order.customer.name,
       'Customer Phone': order.customer.phone,
       'Main Product': order.products.main,
@@ -90,7 +93,7 @@ const exportToPDF = (data, filename = 'orders') => {
     
     // Prepare table data
     const tableData = data.map(order => [
-      order.id,
+      order.order_number || order.id,
       order.customer.name,
       order.products.main,
       `₱${order.amount}`,
@@ -152,7 +155,7 @@ const exportToPDF = (data, filename = 'orders') => {
 const copyToClipboard = (data) => {
   try {
     const tableText = data.map(order => 
-      `${order.id}\t${order.customer.name}\t${order.products.main}\t₱${order.amount}\t${order.status}\t${order.payment}\t${order.date}`
+      `${order.order_number || order.id}\t${order.customer.name}\t${order.products.main}\t₱${order.amount}\t${order.status}\t${order.payment}\t${order.date}`
     ).join('\n')
     
     const header = 'Order ID\tCustomer\tMain Product\tAmount\tStatus\tPayment\tDate\n'
@@ -175,7 +178,7 @@ const printTable = (data) => {
     const printWindow = window.open('', '_blank')
     const tableRows = data.map(order => `
       <tr>
-        <td>${order.id}</td>
+        <td>${order.order_number || order.id}</td>
         <td>${order.customer.name}</td>
         <td>${order.products.main}</td>
         <td>₱${order.amount}</td>
@@ -243,7 +246,10 @@ const printTable = (data) => {
 export default function AdminOrdersPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('all')
-  const [orders] = useState([])
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [isMapLoading, setIsMapLoading] = useState(false)
+  const [selectedOrderForTracking, setSelectedOrderForTracking] = useState(null)
 
   const [showEditModal, setShowEditModal] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
@@ -252,12 +258,255 @@ export default function AdminOrdersPage() {
   const [showRefundModal, setShowRefundModal] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState(null)
 
+  // Load Leaflet CSS and JS
+  useEffect(() => {
+    const loadLeaflet = async () => {
+      try {
+        setIsMapLoading(true)
+        // Load CSS
+        if (!document.querySelector('link[href*="leaflet.css"]')) {
+          const link = document.createElement('link')
+          link.rel = 'stylesheet'
+          link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+          link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY='
+          link.crossOrigin = 'anonymous'
+          document.head.appendChild(link)
+        }
+        
+        // Load JS
+        if (!window.L && !document.querySelector('script[src*="leaflet.js"]')) {
+          const script = document.createElement('script')
+          script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+          script.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo='
+          script.crossOrigin = 'anonymous'
+          script.onload = () => setIsMapLoading(false)
+          script.onerror = () => {
+            console.error('Failed to load Leaflet map library')
+            setIsMapLoading(false)
+          }
+          document.head.appendChild(script)
+        } else if (window.L) {
+          setIsMapLoading(false)
+        }
+      } catch (error) {
+        console.error('Error loading Leaflet:', error)
+        setIsMapLoading(false)
+      }
+    }
+
+    loadLeaflet()
+  }, [])
+
+  // Geocode customer address - uses geocodingService
+  const geocodeCustomerAddress = async (address) => {
+    if (!address || !address.province || !address.municipality || !address.barangay) {
+      return null
+    }
+
+    try {
+      const result = await getLocationCoordinates(address.province, address.municipality, address.barangay)
+      if (result && result.lat && result.lng) {
+        const fullAddress = [
+          address.address_line_1,
+          address.address_line_2,
+          address.barangay,
+          address.municipality || address.city,
+          address.province,
+          address.postal_code
+        ].filter(Boolean).join(', ')
+        
+        return {
+          lat: parseFloat(result.lat),
+          lng: parseFloat(result.lng),
+          address: fullAddress
+        }
+      }
+    } catch (error) {
+      console.error('Failed to geocode customer address:', error)
+    }
+    return null
+  }
+
+  // Geocode seller location - uses geocodingService
+  const geocodeSellerLocation = async (province, municipality, barangay) => {
+    if (!province || !municipality || !barangay) {
+      return null
+    }
+
+    try {
+      const result = await getLocationCoordinates(province, municipality, barangay)
+      if (result && result.lat && result.lng) {
+        return {
+          lat: parseFloat(result.lat),
+          lng: parseFloat(result.lng),
+          address: `Barangay ${barangay}, ${municipality}, ${province}`
+        }
+      }
+    } catch (error) {
+      console.error('Failed to geocode seller location:', error)
+    }
+    return null
+  }
+
+  useEffect(() => {
+    loadOrders()
+  }, [])
+
+  const loadOrders = async () => {
+    try {
+      setLoading(true)
+      console.log('📦 Loading admin orders from database...')
+      
+      const response = await adminAPI.orders.getAll()
+      
+      // Extract orders from response
+      const ordersData = response.data?.orders || response.orders || []
+      console.log('📦 Raw orders data:', ordersData)
+      
+      // Map backend order structure to component format
+      const mappedOrders = await Promise.all(ordersData.map(async (order) => {
+        // Format customer name
+        const firstName = (order.first_name && order.first_name.trim()) || ''
+        const lastName = (order.last_name && order.last_name.trim()) || ''
+        const customerName = `${firstName} ${lastName}`.trim() || 'Unknown Customer'
+        
+        // Format order items with seller locations
+        // Backend should now include seller address data in items for admin orders
+        const items = await Promise.all((order.items || []).map(async (item) => {
+          // Geocode seller location if available
+          let sellerLocation = null
+          
+          // Backend should include seller address data in item
+          if (item.seller_barangay && item.seller_municipality && item.seller_province) {
+            console.log('📍 Geocoding seller location for item:', {
+              barangay: item.seller_barangay,
+              municipality: item.seller_municipality,
+              province: item.seller_province
+            })
+            
+            sellerLocation = await geocodeSellerLocation(
+              item.seller_province,
+              item.seller_municipality,
+              item.seller_barangay
+            )
+            
+            if (sellerLocation) {
+              sellerLocation.address = [
+                item.seller_address_line_1,
+                item.seller_barangay,
+                item.seller_municipality || item.seller_city,
+                item.seller_province,
+                item.seller_postal_code
+              ].filter(Boolean).join(', ')
+              console.log('✅ Seller location geocoded:', sellerLocation)
+            } else {
+              console.warn('⚠️ Failed to geocode seller location')
+            }
+          } else {
+            console.warn('⚠️ Missing seller address data in item:', {
+              has_barangay: !!item.seller_barangay,
+              has_municipality: !!item.seller_municipality,
+              has_province: !!item.seller_province
+            })
+          }
+          
+          return {
+            ...item,
+            sellerLocation: sellerLocation,
+            seller: item.seller_name || order.seller_name || 'Seller'
+          }
+        }))
+        
+        const mainProduct = items.length > 0 ? items[0].product_title || 'Product' : 'No items'
+        const additionalItems = items.length > 1 ? `${items.length - 1} more item(s)` : ''
+        
+        // Format date
+        const orderDate = order.created_at 
+          ? new Date(order.created_at).toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'short', 
+              day: 'numeric' 
+            })
+          : ''
+        
+        // Format payment status - all orders are COD only
+        const paymentStatus = 'COD'
+        
+        // Use order_number as the primary identifier (Order ID)
+        const orderNumber = order.order_number || `ORD-${order.id}`
+        
+        // Get shipping address and geocode customer location
+        const shippingAddress = order.shipping_address || null
+        console.log('📦 Order shipping address:', shippingAddress)
+        
+        let customerLocation = null
+        if (shippingAddress) {
+          console.log('📍 Geocoding customer address...')
+          customerLocation = await geocodeCustomerAddress(shippingAddress).catch((err) => {
+            console.error('❌ Failed to geocode customer address:', err)
+            return null
+          })
+          console.log('📍 Customer location geocoded:', customerLocation)
+        } else {
+          console.warn('⚠️ No shipping address found for order')
+        }
+        
+        // Check if we have any locations
+        const hasSellerLocation = items.some(item => item.sellerLocation)
+        console.log('📍 Location check:', {
+          hasCustomerLocation: !!customerLocation,
+          hasSellerLocation: hasSellerLocation,
+          itemCount: items.length
+        })
+        
+        return {
+          id: order.id, // Keep id for React key and internal use
+          order_number: orderNumber, // This is what will be displayed as Order ID
+          customer: {
+            name: customerName,
+            phone: order.customer?.phone || '',
+            email: order.customer_email || ''
+          },
+          products: {
+            main: mainProduct,
+            additional: additionalItems,
+            items: items // Keep full items array for modals
+          },
+          amount: parseFloat(order.total || 0),
+          status: order.status || 'pending',
+          payment: paymentStatus, // Always 'COD'
+          date: orderDate,
+          deliveryType: order.delivery_type || 'Standard',
+          seller_name: order.seller_name || '',
+          // Keep original data for modals
+          original: order,
+          // Location data for tracking
+          items: items, // Items with seller locations
+          customerLocation: customerLocation,
+          shippingAddress: shippingAddress
+        }
+      }))
+      
+      console.log('📦 Mapped orders:', mappedOrders)
+      setOrders(mappedOrders)
+    } catch (error) {
+      console.error('❌ Failed to load orders:', error)
+      toast.error(error.message || 'Failed to load orders')
+      setOrders([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const filteredOrders = useMemo(() => {
     return orders.filter(order => {
+      const searchLower = searchTerm.toLowerCase()
       const matchesSearch = 
-        order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.products.main.toLowerCase().includes(searchTerm.toLowerCase())
+        String(order.order_number || order.id || '').toLowerCase().includes(searchLower) ||
+        (order.customer?.name || '').toLowerCase().includes(searchLower) ||
+        (order.customer?.email || '').toLowerCase().includes(searchLower) ||
+        (order.products?.main || '').toLowerCase().includes(searchLower) ||
+        (order.seller_name || '').toLowerCase().includes(searchLower)
       
       const matchesStatus = selectedStatus === 'all' || order.status === selectedStatus
       
@@ -268,17 +517,17 @@ export default function AdminOrdersPage() {
   const statusCounts = useMemo(() => {
     return {
       all: orders.length,
-      pending: orders.filter(o => o.status === 'pending').length,
-      processing: orders.filter(o => o.status === 'processing').length,
+      pending: orders.filter(o => o.status === 'pending' || o.status === 'confirmed').length,
+      processing: orders.filter(o => o.status === 'processing' || o.status === 'confirmed').length,
       shipped: orders.filter(o => o.status === 'shipped').length,
-      completed: orders.filter(o => o.status === 'completed').length,
+      completed: orders.filter(o => o.status === 'delivered' || o.status === 'completed').length,
       cancelled: orders.filter(o => o.status === 'cancelled').length
     }
   }, [orders])
 
   const totalRevenue = orders
-    .filter(o => o.status === 'completed')
-    .reduce((sum, o) => sum + o.amount, 0)
+    .filter(o => o.status === 'delivered' || o.status === 'completed')
+    .reduce((sum, o) => sum + (o.amount || 0), 0)
 
   // Use pagination hook
   const { currentItems: paginatedOrders, pagination } = usePagination({ 
@@ -299,11 +548,13 @@ export default function AdminOrdersPage() {
   }
 
   const getPaymentBadgeClass = (payment) => {
-    switch (payment) {
+    switch (payment.toLowerCase()) {
+      case 'cod':
+      case 'cash on delivery': return 'status-active'
       case 'paid': return 'status-active'
       case 'pending': return 'status-warning'
       case 'refunded': return 'status-info'
-      default: return 'status-secondary'
+      default: return 'status-active' // Default to active since all are COD
     }
   }
 
@@ -333,13 +584,366 @@ export default function AdminOrdersPage() {
   }
 
   const handleTrackOrder = (order) => {
-    // Handle order tracking functionality
-    console.log('Track order:', order.id)
+    // Set the order for tracking modal
+    setSelectedOrderForTracking(order)
   }
 
   const handleConfirmPayment = (order) => {
     // Handle payment confirmation
     console.log('Confirm payment for order:', order.id)
+  }
+
+  // Track Order Map Component - Shows customer and seller locations
+  const TrackOrderMapComponent = ({ order }) => {
+    const mapId = `track-map-${order.id}`
+    const [mapError, setMapError] = useState(false)
+    const [mapInitialized, setMapInitialized] = useState(false)
+    const [isInitializing, setIsInitializing] = useState(false)
+    const initRef = useRef(false)
+
+    useEffect(() => {
+      if (order?.id) {
+        setMapInitialized(false)
+        setMapError(false)
+        setIsInitializing(false)
+        initRef.current = false
+      }
+    }, [order?.id])
+
+    // Invalidate map size when modal becomes visible (after map is initialized)
+    useEffect(() => {
+      if (mapInitialized && !isInitializing) {
+        const mapElement = document.getElementById(mapId)
+        if (mapElement && mapElement._leafletMap) {
+          // Small delay to ensure modal transition is complete
+          const timer = setTimeout(() => {
+            if (mapElement._leafletMap && !mapElement._leafletMap._removed) {
+              mapElement._leafletMap.invalidateSize()
+              console.log('✅ Map size invalidated after modal open for order:', order.id)
+            }
+          }, 300)
+          return () => clearTimeout(timer)
+        }
+      }
+    }, [mapInitialized, isInitializing, mapId, order?.id])
+
+    useEffect(() => {
+      // Early returns - don't proceed if already initialized/initializing
+      if (mapInitialized || isInitializing || initRef.current) {
+        return
+      }
+      
+      if (!window.L) {
+        console.warn('⚠️ Leaflet not loaded yet')
+        setMapError(true)
+        return
+      }
+      
+      if (isMapLoading) {
+        console.log('⏳ Waiting for Leaflet to load...')
+        return
+      }
+      
+      if (!order) {
+        console.warn('⚠️ No order provided')
+        return
+      }
+      
+      // Set flags immediately to prevent re-runs
+      initRef.current = true
+      setIsInitializing(true)
+      console.log('🗺️ Starting map initialization for order:', order.id)
+      
+      // Poll for map element with retries
+      let attempts = 0
+      const maxAttempts = 30 // Try for up to 6 seconds (30 * 200ms)
+      const timeoutIds = [] // Track all timeout IDs for cleanup
+      
+      const tryInitializeMap = () => {
+        attempts++
+        console.log(`🗺️ Attempt ${attempts} to find map element:`, mapId)
+        
+        const mapElement = document.getElementById(mapId)
+        if (!mapElement) {
+          console.warn(`⚠️ Map element not found (attempt ${attempts}/${maxAttempts})`)
+          if (attempts < maxAttempts) {
+            const id = setTimeout(tryInitializeMap, 200)
+            timeoutIds.push(id)
+            return
+          } else {
+            console.error('❌ Map element not found after all attempts')
+            setIsInitializing(false)
+            initRef.current = false
+            setMapError(true)
+            return
+          }
+        }
+        
+        console.log('🗺️ Map element found:', mapElement)
+        
+        // Check if element is visible and has dimensions
+        const rect = mapElement.getBoundingClientRect()
+        console.log('🗺️ Map element bounding rect:', { width: rect.width, height: rect.height, top: rect.top, left: rect.left })
+        
+        if (rect.width === 0 || rect.height === 0) {
+          console.warn(`⚠️ Map element has zero dimensions (attempt ${attempts}/${maxAttempts})`)
+          if (attempts < maxAttempts) {
+            const id = setTimeout(tryInitializeMap, 200)
+            timeoutIds.push(id)
+            return
+          } else {
+            console.error('❌ Map element has zero dimensions after all attempts')
+            setIsInitializing(false)
+            initRef.current = false
+            setMapError(true)
+            return
+          }
+        }
+        
+        // Element exists and has dimensions, proceed with initialization
+        // Store reference to the found element
+        const foundMapElement = mapElement
+        setTimeout(() => {
+          try {
+            const mapElement = document.getElementById(mapId)
+            if (!mapElement) {
+              console.error('❌ Map element disappeared')
+              setIsInitializing(false)
+              initRef.current = false
+              return
+            }
+            
+            // Use the found element
+            const elementToUse = mapElement || foundMapElement
+            if (!elementToUse) {
+              console.error('❌ Map element not available')
+              setIsInitializing(false)
+              initRef.current = false
+              return
+            }
+
+            if (elementToUse._leafletMap) {
+              console.log('🗺️ Removing existing map instance')
+              elementToUse._leafletMap.remove()
+            }
+
+            const locations = []
+            
+            console.log('🗺️ Initializing track order map for order:', order.id)
+            console.log('🗺️ Customer location:', order.customerLocation)
+            console.log('🗺️ Order items:', order.items)
+            
+            if (order.customerLocation && order.customerLocation.lat && order.customerLocation.lng) {
+              locations.push({
+                ...order.customerLocation,
+                type: 'customer',
+                label: 'Customer Delivery Address'
+              })
+              console.log('✅ Added customer location to map')
+            }
+            
+            if (order.items) {
+              order.items.forEach(item => {
+                if (item.sellerLocation && item.sellerLocation.lat && item.sellerLocation.lng) {
+                  locations.push({
+                    ...item.sellerLocation,
+                    type: 'seller',
+                    label: item.seller || 'Seller'
+                  })
+                  console.log('✅ Added seller location to map:', item.seller)
+                }
+              })
+            }
+
+            console.log('🗺️ Total locations:', locations.length)
+            
+            if (locations.length === 0) {
+              console.error('❌ No valid locations found for tracking')
+              setMapError(true)
+              setIsInitializing(false)
+              initRef.current = false
+              return
+            }
+
+            const map = window.L.map(mapId, {
+            zoomControl: true,
+            scrollWheelZoom: true,
+            doubleClickZoom: true,
+            boxZoom: true,
+            keyboard: true,
+            dragging: true,
+            touchZoom: true
+          }).setView([locations[0].lat, locations[0].lng], 10)
+
+            window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+              attribution: '© OpenStreetMap contributors',
+              maxZoom: 19
+            }).addTo(map)
+
+            const markers = []
+            locations.forEach(location => {
+              const iconColor = location.type === 'customer' ? 'green' : 'blue'
+              const iconHtml = `<div style="background-color: ${iconColor}; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`
+              
+              const customIcon = window.L.divIcon({
+                html: iconHtml,
+                className: 'custom-marker-icon',
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+              })
+
+              const marker = window.L.marker([location.lat, location.lng], { icon: customIcon }).addTo(map)
+              marker.bindPopup(`
+                <div style="min-width:200px;">
+                  <strong class="d-block mb-1">${location.label}</strong>
+                  <small class="text-muted">${location.address || ''}</small>
+                </div>
+              `)
+              markers.push(marker)
+            })
+
+            if (markers.length > 1) {
+              const group = new window.L.featureGroup(markers)
+              map.fitBounds(group.getBounds().pad(0.2))
+            } else if (markers.length === 1) {
+              map.setView([markers[0].getLatLng().lat, markers[0].getLatLng().lng], 13)
+            }
+
+            if (order.customerLocation && order.items && order.items.some(item => item.sellerLocation)) {
+              const sellerLoc = order.items.find(item => item.sellerLocation)?.sellerLocation
+              if (sellerLoc) {
+                window.L.polyline(
+                  [
+                    [order.customerLocation.lat, order.customerLocation.lng],
+                    [sellerLoc.lat, sellerLoc.lng]
+                  ],
+                  {
+                    color: 'red',
+                    weight: 3,
+                    opacity: 0.7,
+                    dashArray: '10, 10'
+                  }
+                ).addTo(map)
+              }
+            }
+
+            elementToUse._leafletMap = map
+            
+            // Wait a bit longer to ensure modal is fully visible, then invalidate size
+            setTimeout(() => {
+              if (map && !map._removed) {
+                map.invalidateSize()
+                console.log('✅ Map size invalidated for order:', order.id)
+              }
+            }, 100)
+            
+            const currentElement = document.getElementById(mapId)
+            if (currentElement && currentElement._leafletMap === map) {
+              setMapError(false)
+              setMapInitialized(true)
+              setIsInitializing(false)
+              console.log('✅ Track order map initialized successfully for order:', order.id)
+            } else {
+              if (map) map.remove()
+              setIsInitializing(false)
+              initRef.current = false
+            }
+          } catch (error) {
+            console.error('❌ Error initializing track order map:', error)
+            setMapError(true)
+            setIsInitializing(false)
+            initRef.current = false
+          }
+        }, 300) // Small delay to ensure DOM is stable
+      }
+      
+      // Start polling for map element
+      const initialTimer = setTimeout(() => {
+        tryInitializeMap()
+      }, 300) // Initial delay before first attempt
+      timeoutIds.push(initialTimer)
+
+      return () => {
+        // Clear all timeouts
+        timeoutIds.forEach(id => clearTimeout(id))
+        setIsInitializing(false)
+        initRef.current = false
+      }
+    }, [mapId, isMapLoading, order]) // Removed mapInitialized and isInitializing from dependencies
+
+    if (!order) return null
+
+    return (
+      <div style={{ position: 'relative', width: '100%', height: '500px' }}>
+        {/* Always render the map div so it exists in DOM */}
+        <div 
+          id={mapId} 
+          className="border rounded"
+          style={{ 
+            height: '500px', 
+            minHeight: '500px',
+            width: '100%',
+            position: 'relative',
+            zIndex: 1,
+            backgroundColor: '#f8f9fa'
+          }}
+          role="img"
+          aria-label="Tracking map showing customer and seller locations"
+        ></div>
+        
+        {/* Show loading overlay while initializing */}
+        {isInitializing && (
+          <div 
+            className="d-flex justify-content-center align-items-center"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+              zIndex: 10,
+              borderRadius: '8px'
+            }}
+          >
+            <div className="text-center">
+              <div className="spinner-border text-primary mb-3" role="status">
+                <span className="visually-hidden">Loading map...</span>
+              </div>
+              <p className="text-muted">Loading tracking map...</p>
+            </div>
+          </div>
+        )}
+        
+        {/* Show error overlay if map failed to load */}
+        {mapError && !isInitializing && (
+          <div 
+            className="alert alert-warning d-flex align-items-center"
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 10,
+              minWidth: '300px'
+            }}
+            role="alert"
+          >
+            <i className="bi bi-exclamation-triangle me-2"></i>
+            <div>
+              <strong>Unable to load map.</strong>
+              <div className="small mt-1">
+                {!order.customerLocation && (!order.items || !order.items.some(item => item.sellerLocation)) ? (
+                  <span>Location data is not available for this order.</span>
+                ) : (
+                  <span>Please check your internet connection and try again.</span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    )
   }
 
   const TabButton = ({ status, icon, label, count, isActive, onClick }) => (
@@ -442,6 +1046,16 @@ export default function AdminOrdersPage() {
         <i className={icon}></i>
         <span style={{ marginLeft: '4px' }}>{children}</span>
       </button>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="d-flex justify-content-center align-items-center" style={{ height: '400px' }}>
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
     )
   }
 
@@ -626,13 +1240,15 @@ export default function AdminOrdersPage() {
                   onMouseOut={(e) => e.currentTarget.style.backgroundColor = ''}
                 >
                   <td>
-                    <div style={{ fontWeight: '500' }}>#{order.id}</div>
+                    <div style={{ fontWeight: '500' }}>{order.order_number || order.id}</div>
                     <div style={{ fontSize: '12px', color: 'var(--secondary-color)' }}>{order.deliveryType}</div>
                   </td>
                   <td>
                     <div>
                       <div style={{ fontWeight: '500' }}>{order.customer.name}</div>
-                      <div style={{ fontSize: '12px', color: 'var(--secondary-color)' }}>{order.customer.phone}</div>
+                      {order.customer.phone && order.customer.phone !== 'N/A' && (
+                        <div style={{ fontSize: '12px', color: 'var(--secondary-color)' }}>{order.customer.phone}</div>
+                      )}
                     </div>
                   </td>
                   <td>
@@ -837,6 +1453,64 @@ export default function AdminOrdersPage() {
         }}
         order={selectedOrder}
       />
+
+      {/* Track Order Modal */}
+      {selectedOrderForTracking && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
+          <div className="modal-dialog modal-lg modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">
+                  <i className="bi bi-geo-alt me-2"></i>
+                  Track Order: {selectedOrderForTracking.order_number || selectedOrderForTracking.id}
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setSelectedOrderForTracking(null)}
+                  aria-label="Close"
+                ></button>
+              </div>
+              <div className="modal-body">
+                <div className="mb-3">
+                  <h6 className="mb-3">
+                    <i className="bi bi-map me-2"></i>
+                    Order Tracking Map
+                  </h6>
+                  <TrackOrderMapComponent order={selectedOrderForTracking} />
+                </div>
+
+                {/* Legend */}
+                <div className="d-flex gap-4 align-items-center">
+                  <div className="d-flex align-items-center">
+                    <div style={{ width: '16px', height: '16px', backgroundColor: 'green', borderRadius: '50%', border: '2px solid white', boxShadow: '0 2px 4px rgba(0,0,0,0.3)', marginRight: '8px' }}></div>
+                    <small>Customer Delivery Address</small>
+                  </div>
+                  <div className="d-flex align-items-center">
+                    <div style={{ width: '16px', height: '16px', backgroundColor: 'blue', borderRadius: '50%', border: '2px solid white', boxShadow: '0 2px 4px rgba(0,0,0,0.3)', marginRight: '8px' }}></div>
+                    <small>Seller Location</small>
+                  </div>
+                  {selectedOrderForTracking.customerLocation && selectedOrderForTracking.items && selectedOrderForTracking.items.some(item => item.sellerLocation) && (
+                    <div className="d-flex align-items-center">
+                      <div style={{ width: '30px', height: '3px', backgroundColor: 'red', opacity: 0.7, marginRight: '8px', borderStyle: 'dashed' }}></div>
+                      <small>Delivery Route</small>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setSelectedOrderForTracking(null)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

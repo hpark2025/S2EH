@@ -148,8 +148,8 @@ foreach ($orders as &$order) {
     
     $items = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Add complete seller address data to each item (only for user/customer orders, not seller orders)
-    if ($user['user_type'] === 'user') {
+    // Add complete seller address data to each item (for user/customer and admin orders)
+    if ($user['user_type'] === 'user' || $user['user_type'] === 'admin') {
         // Always fetch seller address from addresses table (try default first, then any business address)
         if (!empty($order['seller_id'])) {
             // First try to get default business address
@@ -202,8 +202,8 @@ foreach ($orders as &$order) {
         }
     }
     
-    // Store shipping address data in order (for customer orders only)
-    if ($user['user_type'] === 'user') {
+    // Store shipping address data in order (for customer and admin orders)
+    if ($user['user_type'] === 'user' || $user['user_type'] === 'admin') {
         error_log('🔍 Processing shipping address for order ID: ' . $order['id']);
         error_log('🔍 shipping_address_id: ' . ($order['shipping_address_id'] ?? 'NULL'));
         error_log('🔍 shipping_address_line_1 from JOIN: ' . ($order['shipping_address_line_1'] ?? 'NULL'));

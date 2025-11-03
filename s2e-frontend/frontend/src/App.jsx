@@ -35,8 +35,6 @@ import AdminProductsPage from './pages/Admin/AdminProductsPage.jsx'
 import AdminOrdersPage from './pages/Admin/AdminOrdersPage.jsx'
 import AdminUsersPage from './pages/Admin/AdminUsersPage.jsx'
 import AdminProducersPage from './pages/Admin/AdminProducersPage.jsx'
-import AdminCategoriesPage from './pages/Admin/AdminCategoriesPage.jsx'
-import UserCategoriesPage from './pages/User/UserCategoriesPage.jsx'
 import UserSellerProfilePage from './pages/User/UserSellerProfilePage.jsx'
 import UserChatPage from './pages/User/UserChatPage.jsx'
 import UserCheckoutPage from './pages/User/UserCheckoutPage.jsx'
@@ -58,7 +56,6 @@ function App() {
           <Route index element={<Navigate to="/user/home" replace />} />
           <Route path="home" element={<UserHomePage />} />
           <Route path="products" element={<UserProductsPage />} />
-          <Route path="categories" element={<UserCategoriesPage />} />
           <Route path="products/:id" element={<UserProductDetailsPage />} />
           <Route path="seller/:id" element={<UserSellerProfilePage />} />
           <Route path="cart" element={<UserCartPage />} />
@@ -68,7 +65,6 @@ function App() {
         {/* Backward compatibility - redirect old routes to new structure */}
         <Route path="/home" element={<Navigate to="/user/home" replace />} />
         <Route path="/products" element={<Navigate to="/user/products" replace />} />
-        <Route path="/categories" element={<Navigate to="/user/categories" replace />} />
         
         <Route path="/login" element={<UserLoginPage />} />
         <Route path="/register" element={<UserRegisterPage />} />
@@ -86,7 +82,6 @@ function App() {
           <Route index element={<Navigate to="/auth/home" replace />} />
           <Route path="home" element={<UserHomePage />} />
           <Route path="products" element={<UserProductsPage />} />
-          <Route path="categories" element={<UserCategoriesPage />} />
           <Route path="products/:id" element={<UserProductDetailsPage />} />
           <Route path="seller/:id" element={<UserSellerProfilePage />} />
           <Route path="chat" element={<UserChatPage />} />
@@ -119,7 +114,6 @@ function App() {
           <Route path="orders" element={<AdminOrdersPage />} />
           <Route path="users" element={<AdminUsersPage />} />
           <Route path="producers" element={<AdminProducersPage />} />
-          <Route path="categories" element={<AdminCategoriesPage />} />
           <Route path="messages" element={<AdminMessagesPage />} />
           <Route path="reports" element={<AdminReportsPage />} />
         </Route>
