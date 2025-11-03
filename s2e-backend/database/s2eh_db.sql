@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Oct 29, 2025 at 01:36 AM
+-- Generation Time: Nov 03, 2025 at 11:34 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -61,7 +61,8 @@ INSERT INTO `addresses` (`id`, `user_id`, `seller_id`, `address_type`, `first_na
 (8, 9, NULL, 'shipping', 'tyt', 'ytyt', '+639095677546', '', NULL, 'Aguinaldo', '160303032', 'Esperanza', '160303000', NULL, 'Agusan Del Sur', '160300000', NULL, 'Philippines', 1, '2025-10-28 16:23:36', '2025-10-28 16:23:36'),
 (9, 10, NULL, 'shipping', 'try', 'dsfsf', '+63954664566745', '', NULL, 'Apo Macote', '101312027', 'City of Malaybalay', '101312000', NULL, 'Bukidnon', '101300000', '8700', 'Philippines', 1, '2025-10-28 21:02:42', '2025-10-28 21:02:42'),
 (10, NULL, 10, 'business', NULL, NULL, NULL, 'dsfsf', NULL, 'San Antonio', NULL, 'Bagac', NULL, NULL, 'Bataan', NULL, '2107', 'Philippines', 0, '2025-10-28 23:45:46', '2025-10-28 23:45:46'),
-(12, NULL, 12, 'business', 'mark Plaza', 'mark Plaza', '+639630213833', 'Business Address', NULL, 'Bgy. 38 - Gogon', NULL, NULL, NULL, 'City of Legazpi', 'Albay', NULL, NULL, 'Philippines', 1, '2025-10-29 00:31:43', '2025-10-29 00:31:43');
+(12, NULL, 12, 'business', 'mark Plaza', 'mark Plaza', '+639630213833', 'Business Address', NULL, 'Bgy. 38 - Gogon', NULL, NULL, NULL, 'City of Legazpi', 'Albay', NULL, NULL, 'Philippines', 1, '2025-10-29 00:31:43', '2025-10-29 00:31:43'),
+(13, NULL, 16, 'business', 'Philip Plaza', 'Philip Plaza', '+639630213779', 'Business Address', NULL, 'Gubat', '051717013', 'Lagonoy', '051717000', 'Lagonoy', 'Camarines Sur', '051700000', NULL, 'Philippines', 1, '2025-11-02 23:12:04', '2025-11-02 23:12:04');
 
 -- --------------------------------------------------------
 
@@ -87,7 +88,7 @@ CREATE TABLE `admins` (
 --
 
 INSERT INTO `admins` (`id`, `email`, `password`, `full_name`, `role`, `permissions`, `status`, `created_at`, `updated_at`, `last_login`) VALUES
-(1, 'admin@s2eh.local', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'System Administrator', 'super_admin', NULL, 'active', '2025-10-28 08:38:16', '2025-10-29 00:32:25', '2025-10-29 00:32:25');
+(1, 'admin@s2eh.local', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'System Administrator', 'super_admin', NULL, 'active', '2025-10-28 08:38:16', '2025-11-03 09:40:24', '2025-11-03 09:40:24');
 
 -- --------------------------------------------------------
 
@@ -103,6 +104,14 @@ CREATE TABLE `carts` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Dumping data for table `carts`
+--
+
+INSERT INTO `carts` (`id`, `user_id`, `session_id`, `created_at`, `updated_at`) VALUES
+(1, 10, NULL, '2025-10-30 13:15:55', '2025-10-30 13:15:55'),
+(2, 9, NULL, '2025-10-30 14:07:05', '2025-10-30 14:07:05');
+
 -- --------------------------------------------------------
 
 --
@@ -112,12 +121,23 @@ CREATE TABLE `carts` (
 CREATE TABLE `cart_items` (
   `id` int(11) NOT NULL,
   `cart_id` int(11) NOT NULL,
+  `user_id` int(11) DEFAULT NULL,
   `product_id` int(11) NOT NULL,
+  `seller_id` int(11) DEFAULT NULL,
   `quantity` int(11) NOT NULL DEFAULT 1,
   `price` decimal(10,2) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `cart_items`
+--
+
+INSERT INTO `cart_items` (`id`, `cart_id`, `user_id`, `product_id`, `seller_id`, `quantity`, `price`, `created_at`, `updated_at`) VALUES
+(3, 2, 9, 8, 12, 1, 90.00, '2025-10-30 23:18:49', '2025-10-30 23:18:49'),
+(4, 1, 10, 7, 12, 5, 10.00, '2025-10-31 02:11:26', '2025-11-02 12:59:31'),
+(9, 1, 10, 9, 16, 1, 60.00, '2025-11-03 03:57:00', '2025-11-03 03:57:00');
 
 -- --------------------------------------------------------
 
@@ -162,11 +182,24 @@ CREATE TABLE `messages` (
   `receiver_type` enum('user','seller','admin') NOT NULL,
   `subject` varchar(255) DEFAULT NULL,
   `message` text NOT NULL,
+  `attachment_url` varchar(255) DEFAULT NULL,
   `is_read` tinyint(1) DEFAULT 0,
   `parent_message_id` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `read_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `messages`
+--
+
+INSERT INTO `messages` (`id`, `sender_id`, `sender_type`, `receiver_id`, `receiver_type`, `subject`, `message`, `attachment_url`, `is_read`, `parent_message_id`, `created_at`, `read_at`) VALUES
+(1, 10, 'user', 16, 'seller', 'Inquiry about Kinalas', 'hello', NULL, 1, NULL, '2025-11-03 01:44:37', '2025-11-03 02:31:33'),
+(2, 16, 'seller', 10, 'user', NULL, 'ano daa?', NULL, 1, NULL, '2025-11-03 01:54:40', '2025-11-03 02:22:18'),
+(3, 10, 'user', 12, 'seller', 'Inquiry about Product', 'tesst product', NULL, 1, NULL, '2025-11-03 02:19:05', '2025-11-03 02:32:33'),
+(4, 12, 'seller', 10, 'user', NULL, 'Hi there! Welcome to our store. What can I assist you with?', NULL, 1, NULL, '2025-11-03 02:32:48', '2025-11-03 02:47:24'),
+(5, 12, 'seller', 10, 'user', NULL, '', '/uploads/messages/message_12_1762137995_6908178bbdc06.jpg', 1, NULL, '2025-11-03 02:46:35', '2025-11-03 02:47:24'),
+(6, 10, 'user', 12, 'seller', NULL, '', '/uploads/messages/message_10_1762138246_690818867c253.png', 0, NULL, '2025-11-03 02:50:46', NULL);
 
 -- --------------------------------------------------------
 
@@ -198,6 +231,14 @@ CREATE TABLE `orders` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Dumping data for table `orders`
+--
+
+INSERT INTO `orders` (`id`, `order_number`, `user_id`, `seller_id`, `status`, `payment_status`, `payment_method`, `subtotal`, `shipping_fee`, `tax`, `discount`, `total`, `notes`, `shipping_address_id`, `billing_address_id`, `tracking_number`, `shipped_at`, `delivered_at`, `cancelled_at`, `created_at`, `updated_at`) VALUES
+(1, 'ORD-20251102-0E3DC6', 10, 10, 'shipped', 'pending', 'cod', 6.00, 0.00, 0.00, 0.00, 6.00, NULL, 9, 9, NULL, '2025-11-02 15:56:32', NULL, NULL, '2025-11-02 14:00:16', '2025-11-02 15:56:32'),
+(2, 'ORD-20251103-F27CBD', 10, 16, 'delivered', 'pending', 'cod', 60.00, 0.00, 0.00, 0.00, 60.00, NULL, 9, 9, NULL, '2025-11-03 00:09:45', '2025-11-03 02:56:52', NULL, '2025-11-02 23:25:03', '2025-11-03 02:56:52');
+
 -- --------------------------------------------------------
 
 --
@@ -215,6 +256,14 @@ CREATE TABLE `order_items` (
   `subtotal` decimal(10,2) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `order_items`
+--
+
+INSERT INTO `order_items` (`id`, `order_id`, `product_id`, `product_title`, `product_sku`, `quantity`, `unit_price`, `subtotal`, `created_at`) VALUES
+(1, 1, 6, 'tinapa', 'SKU-1761684222079', 1, 6.00, 6.00, '2025-11-02 14:00:16'),
+(2, 2, 9, 'Kinalas', 'SKU-1762125831410', 1, 60.00, 60.00, '2025-11-02 23:25:03');
 
 -- --------------------------------------------------------
 
@@ -254,7 +303,36 @@ CREATE TABLE `products` (
 INSERT INTO `products` (`id`, `seller_id`, `category_id`, `title`, `slug`, `description`, `price`, `compare_at_price`, `cost_price`, `sku`, `barcode`, `weight`, `unit`, `stock_quantity`, `low_stock_threshold`, `status`, `is_featured`, `thumbnail`, `images`, `tags`, `created_at`, `updated_at`) VALUES
 (2, 10, NULL, 'Tinapay', 'tinapay-6900c04db3d25', 'sdsd', 5.00, NULL, NULL, 'SKU-1761656909662', NULL, NULL, 'kg', 100, 10, 'published', 0, NULL, '[]', '[]', '2025-10-28 13:08:29', '2025-10-28 13:12:06'),
 (3, 10, NULL, 'Milk tea', 'milk-tea-6900cf6e232f7', 'mdsfdsfdsf', 45.00, NULL, NULL, 'SKU-1761660782061', NULL, NULL, 'kg', 50, 10, 'published', 0, NULL, '[]', '[]', '2025-10-28 14:13:02', '2025-10-28 20:48:56'),
-(6, 10, NULL, 'tinapa', 'tinapa-69012afe2ff0d', 'tinapa', 6.00, NULL, NULL, 'SKU-1761684222079', NULL, NULL, 'kg', 100, 10, 'published', 0, '/uploads/products/product_69012afe323a9.jpg', '[]', '[]', '2025-10-28 20:43:42', '2025-10-28 20:48:52');
+(6, 10, NULL, 'tinapa', 'tinapa-69012afe2ff0d', 'tinapa', 6.00, NULL, NULL, 'SKU-1761684222079', NULL, NULL, 'kg', 99, 10, 'published', 0, '/uploads/products/product_69012afe323a9.jpg', '[]', '[]', '2025-10-28 20:43:42', '2025-11-02 14:00:16'),
+(7, 12, NULL, 'Product', 'product-7', 'random product', 10.00, NULL, NULL, 'SKU-1761791876639', NULL, NULL, 'kg', 150, 10, 'published', 0, '/uploads/products/product_6902e97470475.jpg', '[]', '[]', '2025-10-30 02:37:56', '2025-10-30 05:50:15'),
+(8, 12, NULL, 'Product1', 'product1-6902eb945407b', 'Product test', 90.00, NULL, NULL, 'SKU-1761799060275', NULL, NULL, 'kg', 180, 10, 'published', 0, '/uploads/products/product_6902eb945456a.png', '[]', '[]', '2025-10-30 04:37:40', '2025-10-30 05:50:18'),
+(9, 16, NULL, 'Kinalas', 'kinalas-6907e80776652', 'sdsd', 60.00, NULL, NULL, 'SKU-1762125831410', NULL, NULL, 'kg', 16, 10, 'published', 0, '/uploads/products/product_6907e80776dad.png', '[]', '[]', '2025-11-02 23:23:51', '2025-11-02 23:25:03');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `reviews`
+--
+
+CREATE TABLE `reviews` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `product_id` int(11) NOT NULL,
+  `order_id` int(11) NOT NULL,
+  `rating` tinyint(1) NOT NULL CHECK (`rating` >= 1 and `rating` <= 5),
+  `title` varchar(255) NOT NULL,
+  `review` text NOT NULL,
+  `is_verified` tinyint(1) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `reviews`
+--
+
+INSERT INTO `reviews` (`id`, `user_id`, `product_id`, `order_id`, `rating`, `title`, `review`, `is_verified`, `created_at`, `updated_at`) VALUES
+(1, 10, 9, 2, 5, 'aaaaaaaaaaaaaaaaaa', 'aaaaaaaaaaaaaaaaaaaa', 1, '2025-11-03 03:48:06', '2025-11-03 03:53:52');
 
 -- --------------------------------------------------------
 
@@ -287,9 +365,10 @@ CREATE TABLE `sellers` (
 
 INSERT INTO `sellers` (`id`, `email`, `password`, `business_name`, `owner_name`, `phone`, `business_type`, `business_description`, `verification_status`, `status`, `is_lgu_verified`, `tax_id`, `business_permit`, `created_at`, `updated_at`, `last_login`) VALUES
 (6, 'hplaza292@gmail.com', '$2y$10$7Z8JwlqLxlxSj4H6AB20pOywesm3F3ZGO5cwyHUfGTNyF1fRuqxRO', 'Harold Kinalas', 'Harold Plaza', '+639630213879', 'food', 'sadsad', 'pending', 'active', 0, NULL, '3344454', '2025-10-28 09:41:16', '2025-10-28 09:41:16', NULL),
-(10, 'h@gmail.com', '$2y$10$Zk8cSuYt9uHYxvpVha0jp.g4C.Egr.sitCkg51sDtOyNHfa3ajn52', 'random', 'sdasd dsasa sadds', '+639630213864', 'fishery', 'sadsa', 'verified', 'active', 0, NULL, '45354', '2025-10-28 11:14:38', '2025-10-28 21:19:27', '2025-10-28 21:19:27'),
+(10, 'h@gmail.com', '$2y$10$Zk8cSuYt9uHYxvpVha0jp.g4C.Egr.sitCkg51sDtOyNHfa3ajn52', 'random', 'sdasd dsasa sadds', '+639630213864', 'fishery', 'sadsa', 'verified', 'active', 0, NULL, '45354', '2025-10-28 11:14:38', '2025-11-02 15:56:23', '2025-11-02 15:56:23'),
 (11, 'testtest@gmail.com', '$2y$10$ZkTEIERYEx3rEErWsKoI5e.aIjSEVMxBueJXH8uGPAU2pZdAbQs3S', 'dfgdfg', 'Kel dfsdf', '+639444438749', 'fishery', 'fdgfdgfd', 'pending', 'active', 0, NULL, '333', '2025-10-29 00:05:31', '2025-10-29 00:05:31', NULL),
-(12, 'ey@gmail.com', '$2y$10$c48t0AxsfdpdRleyFprpHOu1BHmjW49o.r3Vf7lK1YFE5dAUtlGQe', 'Melissa Paresan', 'mark Plaza', '+639630213833', 'livestock', 'dsfdsfds', 'verified', 'active', 0, NULL, '35454455', '2025-10-29 00:31:43', '2025-10-29 00:33:04', '2025-10-29 00:33:04');
+(12, 'ey@gmail.com', '$2y$10$c48t0AxsfdpdRleyFprpHOu1BHmjW49o.r3Vf7lK1YFE5dAUtlGQe', 'Melissa Paresan', 'mark Plaza', '+639630213833', 'livestock', 'dsfdsfds', 'verified', 'active', 0, NULL, '35454455', '2025-10-29 00:31:43', '2025-11-03 08:04:37', '2025-11-03 08:04:37'),
+(16, 'hp@gmail.com', '$2y$10$kDBpgPE5f17DFgcU99Zije3aN0VzQH9P3yWuncKXkPVO4kYPk.WH6', 'Philip kinalas', 'Philip Plaza', '+639630213779', 'food', 'rere', 'verified', 'active', 0, NULL, '4', '2025-11-02 23:12:04', '2025-11-03 10:12:07', '2025-11-03 10:12:07');
 
 -- --------------------------------------------------------
 
@@ -355,7 +434,70 @@ INSERT INTO `sessions` (`id`, `user_id`, `seller_id`, `admin_id`, `token`, `user
 (55, 10, NULL, NULL, 'ca0e4f68d416a6f0b8eae29e2dfcd39fc6ea812b0926ff9586bd122c3f11d73e', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-29 14:06:50', '2025-10-28 21:06:50'),
 (56, NULL, 10, NULL, '9b0752380c82abd5cc5dca99fc1e098591b5dbd306b73f8123536ae04513309b', 'seller', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-29 14:19:27', '2025-10-28 21:19:27'),
 (57, NULL, NULL, 1, '269b470076ca8381e78cee5705c7d72e5c20d0a83c8b611b1f245592669775a7', 'admin', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-29 17:32:25', '2025-10-29 00:32:25'),
-(58, NULL, 12, NULL, 'b4dceb1a5f507a77efe45ed013ba5f65a5a92b96f025cf940618ba066d978777', 'seller', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-29 17:33:04', '2025-10-29 00:33:04');
+(58, NULL, 12, NULL, 'b4dceb1a5f507a77efe45ed013ba5f65a5a92b96f025cf940618ba066d978777', 'seller', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-29 17:33:04', '2025-10-29 00:33:04'),
+(59, NULL, 12, NULL, 'ae3255961e524ee6bccdefcbed7186e6ad3ed322878106e13b702ecf9eb16954', 'seller', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-30 15:28:35', '2025-10-29 22:28:35'),
+(60, NULL, 12, NULL, '6cb2d9b096f1d5fb77c60fc30b8e01ec091d5d058e38d0850fc54de691315f71', 'seller', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-30 19:05:29', '2025-10-30 02:05:29'),
+(61, NULL, 12, NULL, 'd17c98d90f881a6d54dac78dd6a848e8bcc3ba6dd14fcbead011be44913d0f75', 'seller', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-30 19:17:37', '2025-10-30 02:17:37'),
+(62, NULL, 12, NULL, 'f6908a79b1cc76a93b94d746418036d308abd443deb22f3d6d82d50b4ffff8b9', 'seller', '::1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36', '2025-10-30 19:20:44', '2025-10-30 02:20:44'),
+(63, NULL, 12, NULL, 'b5dfdcbfded8d7f43a6e74789fc839e06896712d77a6c6254bea565049222047', 'seller', '::1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36', '2025-10-30 19:29:33', '2025-10-30 02:29:33'),
+(64, NULL, 12, NULL, '6666662d7a12a8d37047c6be465ef57308b648e4e0fa0eb5a42b7fd37627b311', 'seller', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-30 20:44:09', '2025-10-30 03:44:09'),
+(65, NULL, NULL, 1, 'cbb06fb424164b481f467b75e5c392b8b38bba848b77c3bb6758cc09a6610a8b', 'admin', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-30 21:43:53', '2025-10-30 04:43:53'),
+(66, NULL, NULL, 1, 'a7ac350808429b922b64fc55255de6ded4b01d819c766636c7c2c379c2baf645', 'admin', '::1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36', '2025-10-30 22:30:05', '2025-10-30 05:30:05'),
+(67, NULL, NULL, 1, '4e9ff43a88d1dd5fe9e782bf737fc02b694cc08021f5c033acc70b1a4b8ee06d', 'admin', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-30 22:45:00', '2025-10-30 05:45:00'),
+(68, NULL, 12, NULL, '290cddb12de9abb5790fcb34a0602ca6a277a8c019a1bc64072b7884166e5428', 'seller', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-30 22:50:48', '2025-10-30 05:50:48'),
+(69, NULL, 10, NULL, '9ee64fd52717f7615dfd96476a25726a1795090213fdea83aaa852474bb3c6d6', 'seller', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-30 22:51:24', '2025-10-30 05:51:24'),
+(70, 10, NULL, NULL, 'f534e84c38cbc1f327380778cc079e1a22a5a72b01cbc599243dbb2a9b7f9e50', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-30 22:58:57', '2025-10-30 05:58:57'),
+(71, 10, NULL, NULL, '8e2353be94ce3b28406c781e6da16836dcfb6403146414b3902d772093a30180', 'user', '::1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36', '2025-10-30 23:07:27', '2025-10-30 06:07:27'),
+(72, 10, NULL, NULL, '406450e88522af902f3cd66c4ca4b2a9052b36af0ec495934cf8157103ae6610', 'user', '::1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36', '2025-10-30 23:16:19', '2025-10-30 06:16:19'),
+(73, 10, NULL, NULL, '3495cea12b7ebb6795432aa40cce6b9bed6b1528284e91a50182610bd1184de3', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-31 05:34:12', '2025-10-30 12:34:12'),
+(74, 10, NULL, NULL, 'fc023f97e473ad512205e265da9e605e306398f1c6561a9ed1c4ec9f6e441071', 'user', '::1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36', '2025-10-31 06:04:17', '2025-10-30 13:04:17'),
+(75, 9, NULL, NULL, '59e944f60c34266232996eba0f5156b9d87e33b259cb4ac5f57eeb32aa61cdf1', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-31 07:07:05', '2025-10-30 14:07:05'),
+(76, 9, NULL, NULL, '9b7146673596ba8ad1c794fb6c6f3dc0b1ba40380789c9ea1601ff7e80d18ef0', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-31 16:09:40', '2025-10-30 23:09:40'),
+(77, 10, NULL, NULL, '46e1f11ef41f30d6ce8bb19eb24f9a10611d576fc01ab08d4f48d98765983909', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-31 16:19:57', '2025-10-30 23:19:57'),
+(78, 10, NULL, NULL, '0f878a30ce4c7e53b967fe055cb928dd1c40cd712f45b6634da4246855eff586', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-31 16:26:19', '2025-10-30 23:26:19'),
+(79, 10, NULL, NULL, 'e85f251fcf6506b82baec88eef44a4181790db96ad6ea7d8f176d0ad261a01d9', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-31 16:27:01', '2025-10-30 23:27:01'),
+(80, 10, NULL, NULL, 'b735008d76386501a2ab4f0bde9a908bdb79c8c93921bbb4ca242bac46498c44', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-31 16:31:40', '2025-10-30 23:31:40'),
+(81, 10, NULL, NULL, '689f240e5cae77995d94ecdfd27e216aebbeb16e6f5a38ca9306fbca71ea93ad', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-31 16:32:14', '2025-10-30 23:32:14'),
+(82, 10, NULL, NULL, '966ce5d6bcf568c3e042a9cef419005494c56d4a40eeacd3edd84a826e510fd9', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-31 16:36:53', '2025-10-30 23:36:53'),
+(83, 10, NULL, NULL, 'fec90703a5d4d9403e91d878eb3bd258fbbed0c861e38ed171dad1c5020f459c', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-31 16:55:41', '2025-10-30 23:55:41'),
+(84, 10, NULL, NULL, '7b25ef56e64701968d66eb29fc9bcb85c6059e96147c4819c7da77402b5773ae', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-01 18:34:56', '2025-11-01 01:34:56'),
+(85, 10, NULL, NULL, '734f8f1c1ea76788f3ec6dd885bbc5d8c7e189761e0ddee594786e60b9afd046', 'user', '::1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36', '2025-11-03 02:40:07', '2025-11-02 09:40:07'),
+(86, 10, NULL, NULL, '13eba5a15beff9ba85baa6037ad7eff5d2cf03615f474d264861be1136bd3972', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-03 03:01:07', '2025-11-02 10:01:07'),
+(87, 10, NULL, NULL, '901b002f68f5435457696c3a403a5f37c40eeb31b64fdf4478973b1b062db2df', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-03 03:39:26', '2025-11-02 10:39:26'),
+(88, 10, NULL, NULL, '7d0aa3f483a10d2c845c14d67be3ff22d1361aba7321730ddbdeb816741f0f24', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-03 05:59:45', '2025-11-02 12:59:45'),
+(89, NULL, 10, NULL, '530f8f2bc1f9231fe413ea1e86e53e932a2bde5dd9423df0e89a3f71ea5aa7ab', 'seller', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-03 07:18:37', '2025-11-02 14:18:37'),
+(90, 10, NULL, NULL, '321b74ef8b4beba060f2424cdb8f4e9bb0f2e321dda2ff4a99abb7324ca57157', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-03 08:48:00', '2025-11-02 15:48:00'),
+(91, NULL, 10, NULL, 'e82073c1e12b0be1b3e8f82ced0d362eef74169ac460757709df8eec68997fa4', 'seller', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-03 08:54:54', '2025-11-02 15:54:54'),
+(92, 10, NULL, NULL, '06ee2e052e628ffa42e8793d4e849327a33bbcdeaeec55e68b68bcedfcb3edfb', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-03 08:55:52', '2025-11-02 15:55:52'),
+(93, NULL, 10, NULL, 'baccbae7086abd360475fe75144a1a17bc97809b0eada56aecd9646a73035147', 'seller', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-03 08:56:23', '2025-11-02 15:56:23'),
+(94, 10, NULL, NULL, '2f99167eb264ac64ea93d41e840862f43f327365472d56c4eb5e0aae9f75c38a', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-03 08:57:08', '2025-11-02 15:57:08'),
+(95, NULL, NULL, 1, '16d222e378acffc140e71d9226519625ca53bde66b3057ad205e74c5b3d34126', 'admin', '::1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36', '2025-11-03 16:21:47', '2025-11-02 23:21:47'),
+(96, NULL, 16, NULL, '19b15a02e4dcf301ee72001a50c015eeb7a097f1c12a70fb70b6019480e79b02', 'seller', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-03 16:22:57', '2025-11-02 23:22:57'),
+(97, NULL, NULL, 1, '8ea81178733e8fd729bd60ff4d9a48bfda342c813e50e92a21098c3a2cac5cf6', 'admin', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-03 16:24:09', '2025-11-02 23:24:09'),
+(98, 10, NULL, NULL, '462ca006e0391e22e0fa1f296b92279d69774c5931da0b4e9124787f2df439db', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-03 16:24:41', '2025-11-02 23:24:41'),
+(99, NULL, 16, NULL, '5cfc3be179e0be71ea16322ca94c34894cdc9298ff2fb58393a04588ed927405', 'seller', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-03 17:09:36', '2025-11-03 00:09:36'),
+(100, 10, NULL, NULL, '3870b722e836be08604068b181e7326510ba6beaea759336db01188d8c67f405', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-03 17:10:03', '2025-11-03 00:10:03'),
+(101, NULL, 16, NULL, '55def5b1a08b78f04d56b1f6d48cb85b5a41ce2e6f8b9c333a84c4352298cfb4', 'seller', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-03 17:12:48', '2025-11-03 00:12:48'),
+(102, 10, NULL, NULL, '2d30e41a7b9e36cafc5c7e23bee3099902388e70ec0cf129746f912ed9c01d8d', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-03 17:13:42', '2025-11-03 00:13:42'),
+(103, 10, NULL, NULL, 'e34887df6fb6a5de8fd878b798ad05c05574db6119545a8eecc8e6586155b375', 'user', '::1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36', '2025-11-03 18:26:43', '2025-11-03 01:26:43'),
+(104, NULL, 16, NULL, 'fcee03aa3c4a7da5d14e0a5a29f744a7cd9c5d9ed94be0a016b0ad5000022129', 'seller', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-03 18:46:04', '2025-11-03 01:46:04'),
+(105, 10, NULL, NULL, '1446bc4c23656d62c6e8e2a91a9d613b6a22e98a260b8f0f19e1ee9d95cad44c', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-03 18:56:24', '2025-11-03 01:56:24'),
+(106, NULL, 16, NULL, '824bd92e3ba24b11a35eefdb8860c4d6742cb3f2d6545fa562fab863e345dee2', 'seller', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-03 19:31:17', '2025-11-03 02:31:17'),
+(107, NULL, 12, NULL, '02498a672b012ce985954b203fe4e7aff6f291920daf29e2869ab154c36cc6a9', 'seller', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-03 19:32:28', '2025-11-03 02:32:28'),
+(108, 10, NULL, NULL, '3197df056e6ed6ec2fb309bc5bb7395580c490440f6af912e3558d4187fee706', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-03 19:47:20', '2025-11-03 02:47:20'),
+(109, NULL, 16, NULL, 'deeea25203478c353587d19e95248c1b9bdebb6dd6bb983db336ea4e982882d7', 'seller', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-03 19:56:42', '2025-11-03 02:56:42'),
+(110, 10, NULL, NULL, '9db0be92e4763748d86e6dd4997f0da62c40cca72794a7230376be2f27745042', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-03 19:57:12', '2025-11-03 02:57:12'),
+(111, NULL, 12, NULL, 'b9e9a3fe1bbb00c31a1986b76878bd2baddcc926f69484be248388449b120f89', 'seller', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-04 01:04:36', '2025-11-03 08:04:37'),
+(112, NULL, NULL, 1, 'cdc1fad0e8f0ec13b63fc0e074b4f20bf40cf40b5eb1978b7cd50393726f4909', 'admin', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-04 01:18:04', '2025-11-03 08:18:04'),
+(113, 10, NULL, NULL, '2816de3ef60fb53b66ccd910e14cb70131bd28fefe415960ec990193f3ee1904', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-04 02:28:07', '2025-11-03 09:28:07'),
+(114, NULL, NULL, 1, 'ae305a56cbcd9758f7ddeef1e0687d9511be4e121e83fc0f6f5122c72aa5a51a', 'admin', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-04 02:30:32', '2025-11-03 09:30:32'),
+(115, 10, NULL, NULL, '270b84d4bd40b0b0c594de7cc7f7668df7908824eaf88351442d9331bdbb8fb2', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-04 02:32:46', '2025-11-03 09:32:46'),
+(116, NULL, NULL, 1, '87ce1c162ac22f92dc4dfdb314bf81301386a8ffd21aa4e9cfbf715d017ce79d', 'admin', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-04 02:38:31', '2025-11-03 09:38:31'),
+(117, NULL, 16, NULL, '02cd2dddfab4c8c6abcdcf1fa503d210526e78c5896296278cfe936d008c151b', 'seller', '::1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36', '2025-11-04 02:39:34', '2025-11-03 09:39:34'),
+(118, NULL, NULL, 1, '1136dbfff72c4816de57df3ee6d6a48cb46172c7a2a96f073cb8f12636254ea8', 'admin', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-04 02:40:24', '2025-11-03 09:40:24'),
+(119, NULL, 16, NULL, '08dbb6f77851c01deb31845cc37107e719e36c1d891f7ed2959216549a456d32', 'seller', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-04 03:12:07', '2025-11-03 10:12:07'),
+(120, 10, NULL, NULL, 'fddd51c190403efc0b98121669d86556265a73a119728b474f349a627baa188d', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-04 03:17:56', '2025-11-03 10:17:56'),
+(121, 10, NULL, NULL, '680fca8e08f2d7e6efa1a3efae1d3ff1734307e6eb9bbc554bad7f01228a8f3c', 'user', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-11-04 03:28:58', '2025-11-03 10:28:58');
 
 -- --------------------------------------------------------
 
@@ -370,6 +512,7 @@ CREATE TABLE `users` (
   `first_name` varchar(100) NOT NULL,
   `last_name` varchar(100) NOT NULL,
   `phone` varchar(20) DEFAULT NULL,
+  `avatar` varchar(255) DEFAULT NULL,
   `role` enum('customer','admin') DEFAULT 'customer',
   `status` enum('pending','active','inactive','suspended') DEFAULT 'pending',
   `email_verified` tinyint(1) DEFAULT 0,
@@ -382,10 +525,10 @@ CREATE TABLE `users` (
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`id`, `email`, `password`, `first_name`, `last_name`, `phone`, `role`, `status`, `email_verified`, `created_at`, `updated_at`, `last_login`) VALUES
-(2, 'john@gmail.com', '$2y$10$QUYAKbvSi/RnNpH4tK3AEOXxbbO3OjcFKCYjsd/QXxPGlcs2JxK0.', 'romeo', 'Doe', '+6397485643834', 'customer', 'active', 0, '2025-10-28 11:35:24', '2025-10-28 18:06:05', '2025-10-28 18:06:05'),
-(9, 'test@gmail.com', '$2y$10$OxgerGAaP4IWhujzaGuvOuEaaw9uD4uahFM6uSnz1g6458OsOfi86', 'tyt', 'ytyt', '+639095677546', 'customer', 'active', 0, '2025-10-28 16:23:36', '2025-10-28 20:49:56', '2025-10-28 20:49:56'),
-(10, 'serious@gmail.com', '$2y$10$GsmDQE8596Eq0mm51scZjuaUy9vE39MSXwG7yqGW1CS5YQQGt6Yfy', 'try', 'dsfsf', '+63954664566745', 'customer', 'active', 0, '2025-10-28 21:02:42', '2025-10-28 21:06:50', '2025-10-28 21:06:50');
+INSERT INTO `users` (`id`, `email`, `password`, `first_name`, `last_name`, `phone`, `avatar`, `role`, `status`, `email_verified`, `created_at`, `updated_at`, `last_login`) VALUES
+(2, 'john@gmail.com', '$2y$10$QUYAKbvSi/RnNpH4tK3AEOXxbbO3OjcFKCYjsd/QXxPGlcs2JxK0.', 'romeo', 'Doe', '+6397485643834', NULL, 'customer', 'active', 0, '2025-10-28 11:35:24', '2025-10-28 18:06:05', '2025-10-28 18:06:05'),
+(9, 'test@gmail.com', '$2y$10$OxgerGAaP4IWhujzaGuvOuEaaw9uD4uahFM6uSnz1g6458OsOfi86', 'Tangol', 'Dimaguiba', '+639095677546', NULL, 'customer', 'active', 0, '2025-10-28 16:23:36', '2025-10-30 23:09:40', '2025-10-30 23:09:40'),
+(10, 'serious@gmail.com', '$2y$10$s/pOJ91wrFZBZ7ey072YKeG3PwPUTz09WXAEQ.8ikXQcWE3h3tJT2', 'try', 'dsfsf', '+63954664566745', '/S2EH/s2e-backend/uploads/avatars/avatar_10_1761868133.jpg', 'customer', 'active', 0, '2025-10-28 21:02:42', '2025-11-03 10:28:58', '2025-11-03 10:28:58');
 
 --
 -- Indexes for dumped tables
@@ -425,7 +568,9 @@ ALTER TABLE `carts`
 ALTER TABLE `cart_items`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_cart_id` (`cart_id`),
-  ADD KEY `idx_product_id` (`product_id`);
+  ADD KEY `idx_product_id` (`product_id`),
+  ADD KEY `seller_id` (`seller_id`),
+  ADD KEY `user_id` (`user_id`);
 
 --
 -- Indexes for table `categories`
@@ -483,6 +628,16 @@ ALTER TABLE `products`
   ADD KEY `idx_sku` (`sku`);
 
 --
+-- Indexes for table `reviews`
+--
+ALTER TABLE `reviews`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `user_product_order` (`user_id`,`product_id`,`order_id`),
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `product_id` (`product_id`),
+  ADD KEY `order_id` (`order_id`);
+
+--
 -- Indexes for table `sellers`
 --
 ALTER TABLE `sellers`
@@ -521,7 +676,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `addresses`
 --
 ALTER TABLE `addresses`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `admins`
@@ -533,13 +688,13 @@ ALTER TABLE `admins`
 -- AUTO_INCREMENT for table `carts`
 --
 ALTER TABLE `carts`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `cart_items`
 --
 ALTER TABLE `cart_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT for table `categories`
@@ -551,37 +706,43 @@ ALTER TABLE `categories`
 -- AUTO_INCREMENT for table `messages`
 --
 ALTER TABLE `messages`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `orders`
 --
 ALTER TABLE `orders`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `order_items`
 --
 ALTER TABLE `order_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `products`
 --
 ALTER TABLE `products`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+
+--
+-- AUTO_INCREMENT for table `reviews`
+--
+ALTER TABLE `reviews`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `sellers`
 --
 ALTER TABLE `sellers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT for table `sessions`
 --
 ALTER TABLE `sessions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=59;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=122;
 
 --
 -- AUTO_INCREMENT for table `users`
@@ -611,7 +772,9 @@ ALTER TABLE `carts`
 --
 ALTER TABLE `cart_items`
   ADD CONSTRAINT `cart_items_ibfk_1` FOREIGN KEY (`cart_id`) REFERENCES `carts` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `cart_items_ibfk_2` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `cart_items_ibfk_2` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `cart_items_ibfk_3` FOREIGN KEY (`seller_id`) REFERENCES `sellers` (`id`),
+  ADD CONSTRAINT `cart_items_ibfk_4` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
 
 --
 -- Constraints for table `categories`
