@@ -164,7 +164,11 @@ export const authAPI = {
         business_permit: registrationData.businessLicense,
         province: registrationData.province,
         municipality: registrationData.municipality,
-        barangay: registrationData.barangay
+        barangay: registrationData.barangay,
+        // PSGC codes for addresses table
+        province_code: registrationData.province_code,
+        municipality_code: registrationData.municipality_code,
+        barangay_code: registrationData.barangay_code
       });
       
       console.log('🔍 Seller registration response:', response.data);
@@ -191,10 +195,27 @@ export const authAPI = {
         };
       }
       
-      throw new Error('Failed to register seller');
+      // If not successful, throw error with backend message
+      const errorMessage = response.data.message || 'Failed to register seller';
+      throw new Error(errorMessage);
     } catch (error) {
       console.error('Seller registration failed:', error);
-      throw error.response?.data || error;
+      
+      // Handle axios error response
+      if (error.response?.data) {
+        // Backend returned an error response
+        const backendError = error.response.data;
+        const errorMessage = backendError.message || 'Registration failed';
+        throw new Error(errorMessage);
+      }
+      
+      // Re-throw if it's already an Error object
+      if (error instanceof Error) {
+        throw error;
+      }
+      
+      // Otherwise throw a generic error
+      throw new Error('Failed to register seller');
     }
   },
 
@@ -222,6 +243,29 @@ export const authAPI = {
     localStorage.setItem('user', JSON.stringify(guestUser));
     console.log('LocalStorage updated with guest user data');
     return guestUser;
+  },
+
+  // Get all products (delegates to productsAPI)
+  getProducts: async (params = {}) => {
+    try {
+      console.log('🔍 Fetching products from PHP backend /api/products')
+      console.log('🔍 Request params:', params)
+      
+      // Use our PHP backend endpoint (returns published products only)
+      const response = await api.get('/api/products', { params })
+      console.log('🔍 Products response:', response.data)
+      
+      // Backend returns { success: true, data: { products: [...] } }
+      return response.data.data || response.data
+    } catch (error) {
+      console.error('🔍 Failed to fetch products:', error)
+      console.error('🔍 Error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      })
+      throw error.response?.data || error
+    }
   }
 };
 

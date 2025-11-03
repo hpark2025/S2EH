@@ -59,6 +59,7 @@ function getCart($db) {
                 p.thumbnail as product_image,
                 p.price as current_price,
                 p.stock_quantity,
+                p.sku as product_sku,
                 s.business_name as seller_name
               FROM cart_items ci
               JOIN products p ON ci.product_id = p.id

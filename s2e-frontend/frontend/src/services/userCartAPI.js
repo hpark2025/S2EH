@@ -186,6 +186,41 @@ export const userCartAPI = {
       console.error('❌ Failed to clear cart:', error);
       throw error;
     }
+  },
+
+  /**
+   * Create order
+   */
+  createOrder: async (orderData) => {
+    try {
+      console.log('📡 Creating order:', orderData);
+      
+      const response = await fetch('http://localhost:8080/S2EH/s2e-backend/api/orders/create.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getAuthToken()}`
+        },
+        body: JSON.stringify(orderData)
+      });
+      
+      console.log('✅ Response status:', response.status);
+      
+      const text = await response.text();
+      console.log('📄 Response text:', text.substring(0, 500));
+      
+      const data = JSON.parse(text);
+      console.log('✅ Create order response:', data);
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to create order');
+      }
+      
+      return data.data || data;
+    } catch (error) {
+      console.error('❌ Failed to create order:', error);
+      throw error;
+    }
   }
 };
 

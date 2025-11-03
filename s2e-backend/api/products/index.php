@@ -47,13 +47,24 @@ if ($seller_id) {
 
 $whereClause = implode(' AND ', $whereConditions);
 
-// Get products with seller and category info
+// Get products with seller, category info, and ratings
+// Using subquery for ratings to ensure correct aggregation
 $query = "SELECT 
             p.*,
             c.name as category_name,
             c.slug as category_slug,
             s.business_name as seller_name,
-            s.id as seller_id
+            s.id as seller_id,
+            COALESCE((
+              SELECT AVG(rating) 
+              FROM reviews 
+              WHERE product_id = p.id
+            ), 0) as average_rating,
+            COALESCE((
+              SELECT COUNT(*) 
+              FROM reviews 
+              WHERE product_id = p.id
+            ), 0) as review_count
           FROM products p
           LEFT JOIN categories c ON p.category_id = c.id
           LEFT JOIN sellers s ON p.seller_id = s.id
@@ -71,12 +82,26 @@ $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
 $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 
 $stmt->execute();
-$products = $stmt->fetchAll();
+$products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Parse JSON fields
+// Parse JSON fields and format ratings
 foreach ($products as &$product) {
     $product['images'] = json_decode($product['images'] ?? '[]');
     $product['tags'] = json_decode($product['tags'] ?? '[]');
+    
+    // Format average rating (round to 1 decimal place)
+    // Ensure we're getting numeric values from the subquery
+    $averageRating = floatval($product['average_rating'] ?? 0);
+    $product['average_rating'] = $averageRating > 0 ? round($averageRating, 1) : 0;
+    $product['review_count'] = intval($product['review_count'] ?? 0);
+    
+    // Debug log for rating data - log all products to see what we're getting
+    error_log("Product ID: {$product['id']}, Title: {$product['title']}, Avg Rating: {$product['average_rating']}, Review Count: {$product['review_count']}");
+    
+    // Additional debug for products with ratings
+    if ($product['average_rating'] > 0 || $product['review_count'] > 0) {
+        error_log("⭐ Product with ratings - ID: {$product['id']}, Title: {$product['title']}, Rating: {$product['average_rating']}, Count: {$product['review_count']}");
+    }
 }
 
 // Get total count

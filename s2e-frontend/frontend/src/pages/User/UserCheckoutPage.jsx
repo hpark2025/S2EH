@@ -98,10 +98,108 @@ export default function UserCheckoutPage() {
             console.log('📦 Checkout - Mapped cart items:', mappedItems)
             console.log('📦 Checkout - Setting cart items, count:', mappedItems.length)
             
-            setCartItems(mappedItems)
+            // Check if there are selected items from cart page
+            const selectedItemsFromCart = localStorage.getItem('checkoutSelectedCartItems')
+            const selectedItemIdsFromCart = localStorage.getItem('checkoutSelectedItems')
+            
+            console.log('📦 Checkout - Checking for selected items in localStorage...')
+            console.log('📦 Checkout - checkoutSelectedCartItems exists:', !!selectedItemsFromCart)
+            console.log('📦 Checkout - checkoutSelectedItems exists:', !!selectedItemIdsFromCart)
+            console.log('📦 Checkout - All mapped items count:', mappedItems.length)
+            console.log('📦 Checkout - All mapped items IDs:', mappedItems.map(item => `${item.id} (${typeof item.id})`))
+            
+            let finalItems = mappedItems
+            
+            if (selectedItemsFromCart) {
+              try {
+                // Use the full selected items data if available
+                const selectedItems = JSON.parse(selectedItemsFromCart)
+                console.log('📦 Checkout - Found selected items from cart:', selectedItems)
+                
+                // Filter mapped items to only include selected ones
+                // Convert IDs to strings for comparison to avoid type mismatch
+                const selectedItemIds = selectedItems.map(item => String(item.id))
+                console.log('📦 Checkout - Selected item IDs to filter (as strings):', selectedItemIds)
+                
+                finalItems = mappedItems.filter(item => {
+                  const itemIdStr = String(item.id)
+                  const isSelected = selectedItemIds.includes(itemIdStr)
+                  if (!isSelected) {
+                    console.log(`📦 Checkout - Item ${item.id} (${item.title}) - NOT selected`)
+                  }
+                  return isSelected
+                })
+                
+                console.log('📦 Checkout - Filtered to selected items only, count:', finalItems.length)
+                console.log('📦 Checkout - Final items:', finalItems.map(item => ({ id: item.id, title: item.title })))
+                
+                // Keep selected items in localStorage for page reload persistence
+                // Will be cleared when order is placed successfully
+                console.log('💾 Checkout - Keeping selected items in localStorage for page reload persistence')
+              } catch (error) {
+                console.error('❌ Checkout - Error parsing selected items:', error)
+                // If parsing fails, redirect to cart
+                toast.error('Error loading selected items. Please try again.')
+                navigate('/user/cart')
+                setLoading(false)
+                return
+              }
+            } else if (selectedItemIdsFromCart) {
+              try {
+                // Fallback to just IDs if full data not available
+                const selectedIds = JSON.parse(selectedItemIdsFromCart)
+                console.log('📦 Checkout - Found selected item IDs from cart:', selectedIds)
+                console.log('📦 Checkout - Selected IDs types:', selectedIds.map(id => typeof id))
+                
+                // Convert all IDs to strings for comparison
+                const selectedIdsStr = selectedIds.map(id => String(id))
+                console.log('📦 Checkout - Selected item IDs as strings:', selectedIdsStr)
+                
+                finalItems = mappedItems.filter(item => {
+                  const itemIdStr = String(item.id)
+                  const isSelected = selectedIdsStr.includes(itemIdStr)
+                  if (!isSelected) {
+                    console.log(`📦 Checkout - Item ${item.id} (${item.title}) - NOT selected by ID`)
+                  }
+                  return isSelected
+                })
+                
+                console.log('📦 Checkout - Filtered to selected items by ID, count:', finalItems.length)
+                console.log('📦 Checkout - Final items:', finalItems.map(item => ({ id: item.id, title: item.title })))
+                
+                // Keep selected items in localStorage for page reload persistence
+                // Will be cleared when order is placed successfully
+                console.log('💾 Checkout - Keeping selected items in localStorage for page reload persistence')
+              } catch (error) {
+                console.error('❌ Checkout - Error parsing selected item IDs:', error)
+                // If parsing fails, redirect to cart
+                toast.error('Error loading selected items. Please try again.')
+                navigate('/user/cart')
+                setLoading(false)
+                return
+              }
+            } else {
+              // If no selected items found, redirect to cart to select items
+              console.log('📦 Checkout - No selected items found in localStorage, redirecting to cart...')
+              toast.error('Please select items to checkout')
+              navigate('/user/cart')
+              setLoading(false)
+              return
+            }
+            
+            // Check if filtered items is empty (additional safety check)
+            if (finalItems.length === 0) {
+              console.log('📦 Checkout - No items available after filtering, redirecting to cart...')
+              toast.error('Please select items to checkout')
+              navigate('/user/cart')
+              setLoading(false)
+              return
+            }
+            
+            setCartItems(finalItems)
             
             // Sync to localStorage for backward compatibility
-            localStorage.setItem('cart', JSON.stringify(mappedItems))
+            localStorage.setItem('cart', JSON.stringify(finalItems))
             
             setLoading(false)
             return
@@ -132,13 +230,89 @@ export default function UserCheckoutPage() {
       if (cartData) {
         const parsedCart = JSON.parse(cartData)
         console.log('📦 Checkout - Loaded cart from localStorage:', parsedCart)
-        setCartItems(parsedCart)
         
-        // Redirect to cart if cart is empty
-        if (parsedCart.length === 0) {
-          toast.error('Your cart is empty')
+        // Check if there are selected items from cart page
+        const selectedItemsFromCart = localStorage.getItem('checkoutSelectedCartItems')
+        const selectedItemIdsFromCart = localStorage.getItem('checkoutSelectedItems')
+        
+        let finalItems = parsedCart
+        
+        if (selectedItemsFromCart) {
+          try {
+            // Use the full selected items data if available
+            const selectedItems = JSON.parse(selectedItemsFromCart)
+            console.log('📦 Checkout - Found selected items from cart (localStorage):', selectedItems)
+            
+            // Filter cart items to only include selected ones
+            // Convert IDs to strings for comparison
+            const selectedItemIds = selectedItems.map(item => String(item.id))
+            console.log('📦 Checkout - Selected item IDs to filter (as strings):', selectedItemIds)
+            
+            finalItems = parsedCart.filter(item => {
+              const itemIdStr = String(item.id)
+              return selectedItemIds.includes(itemIdStr)
+            })
+            
+            console.log('📦 Checkout - Filtered to selected items only, count:', finalItems.length)
+            
+            // Keep selected items in localStorage for page reload persistence
+            // Will be cleared when order is placed successfully
+            console.log('💾 Checkout - Keeping selected items in localStorage for page reload persistence')
+          } catch (error) {
+            console.error('❌ Checkout - Error parsing selected items:', error)
+            // If parsing fails, redirect to cart
+            toast.error('Error loading selected items. Please try again.')
+            navigate('/user/cart')
+            setLoading(false)
+            return
+          }
+        } else if (selectedItemIdsFromCart) {
+          try {
+            // Fallback to just IDs if full data not available
+            const selectedIds = JSON.parse(selectedItemIdsFromCart)
+            console.log('📦 Checkout - Found selected item IDs from cart (localStorage):', selectedIds)
+            
+            // Convert all IDs to strings for comparison
+            const selectedIdsStr = selectedIds.map(id => String(id))
+            console.log('📦 Checkout - Selected item IDs as strings:', selectedIdsStr)
+            
+            finalItems = parsedCart.filter(item => {
+              const itemIdStr = String(item.id)
+              return selectedIdsStr.includes(itemIdStr)
+            })
+            
+            console.log('📦 Checkout - Filtered to selected items by ID, count:', finalItems.length)
+            
+            // Keep selected items in localStorage for page reload persistence
+            // Will be cleared when order is placed successfully
+            console.log('💾 Checkout - Keeping selected items in localStorage for page reload persistence')
+          } catch (error) {
+            console.error('❌ Checkout - Error parsing selected item IDs:', error)
+            // If parsing fails, redirect to cart
+            toast.error('Error loading selected items. Please try again.')
+            navigate('/user/cart')
+            setLoading(false)
+            return
+          }
+        } else {
+          // If no selected items found, redirect to cart to select items
+          console.log('📦 Checkout - No selected items found in localStorage, redirecting to cart...')
+          toast.error('Please select items to checkout')
           navigate('/user/cart')
+          setLoading(false)
+          return
         }
+        
+        // Check if filtered items is empty (additional safety check)
+        if (finalItems.length === 0) {
+          console.log('📦 Checkout - No items available after filtering, redirecting to cart...')
+          toast.error('Please select items to checkout')
+          navigate('/user/cart')
+          setLoading(false)
+          return
+        }
+        
+        setCartItems(finalItems)
       } else {
         console.log('📦 Checkout - No cart found in localStorage')
         toast.error('Your cart is empty')
@@ -308,21 +482,86 @@ export default function UserCheckoutPage() {
 
   const handlePlaceOrder = async () => {
     if (!selectedPayment || !selectedAddress) {
-      alert('Please select a payment method and delivery address')
+      toast.error('Please select a payment method and delivery address')
+      return
+    }
+
+    if (cartItems.length === 0) {
+      toast.error('No items to order')
       return
     }
 
     setIsPlacingOrder(true)
 
-    // Simulate order processing
-    setTimeout(() => {
-      const orderNumber = 'ORD-' + Date.now()
-      alert(`Order placed successfully!\nOrder Number: ${orderNumber}\n\nYou will receive a confirmation email shortly.`)
+    try {
+      // Prepare order items - map cart items to order format
+      const orderItems = cartItems.map(item => ({
+        product_id: item.id,
+        quantity: item.quantity
+      }))
+
+      // Prepare order data
+      // Note: Backend will calculate subtotal and total from items
+      const orderData = {
+        items: orderItems,
+        payment_method: selectedPayment,
+        shipping_address_id: selectedAddress,
+        shipping_fee: deliveryFee,
+        tax: serviceFee,
+        discount: 0,
+        notes: null
+      }
+
+      console.log('📦 Creating order with data:', orderData)
+
+      // Call API to create order
+      const order = await userCartAPI.createOrder(orderData)
       
-      // Navigate to orders page or confirmation
-      navigate('/auth/account/orders')
+      console.log('✅ Order created successfully:', order)
+      
+      // Remove ordered items from cart in database
+      try {
+        // Remove each ordered item from cart using cart_item_id if available
+        for (const item of cartItems) {
+          if (item.cart_item_id) {
+            try {
+              await userCartAPI.removeFromCart(item.cart_item_id)
+              console.log(`✅ Removed cart item ${item.cart_item_id} from database`)
+            } catch (removeError) {
+              console.error(`❌ Failed to remove cart item ${item.cart_item_id}:`, removeError)
+              // Continue removing other items even if one fails
+            }
+          }
+        }
+      } catch (cartError) {
+        console.error('❌ Failed to remove items from cart:', cartError)
+        // Don't fail the order if cart cleanup fails
+      }
+      
+      // Clear selected items from localStorage after successful order placement
+      localStorage.removeItem('checkoutSelectedCartItems')
+      localStorage.removeItem('checkoutSelectedItems')
+      console.log('✅ Checkout - Cleared selected items from localStorage after order placement')
+      
+      // Clear cart items from localStorage as well
+      localStorage.removeItem('cart')
+      
+      // Dispatch event to update cart badge
+      window.dispatchEvent(new Event('cartUpdated'))
+      
+      // Show success message
+      toast.success(`Order placed successfully! Order Number: ${order.order_number || 'N/A'}`)
+      
+      // Navigate to orders page
+      setTimeout(() => {
+        navigate('/auth/account/orders')
+      }, 1500)
+      
+    } catch (error) {
+      console.error('❌ Failed to place order:', error)
+      toast.error(error.message || 'Failed to place order. Please try again.')
       setIsPlacingOrder(false)
-    }, 2000)
+    }
   }
 
   const handleSaveAddress = (addressData) => {
@@ -435,7 +674,7 @@ export default function UserCheckoutPage() {
                             onChange={() => handleAddressChange(address.id)}
                           />
                           <label className="form-check-label w-100" htmlFor={`address_${address.id}`} style={{ cursor: 'pointer' }}>
-                            <div className="d-flex justify-content-between align-items-start mb-2">
+                            <div className="mb-2">
                               <div>
                                 <h6 className="mb-1 fw-bold">{address.label || address.barangay || address.municipality || 'Home Address'}</h6>
                                 <p className="text-muted mb-1 small">{formatAddress(address)}</p>
@@ -443,16 +682,6 @@ export default function UserCheckoutPage() {
                                   <span className="badge bg-primary mt-2">Default</span>
                                 )}
                               </div>
-                              <button 
-                                type="button" 
-                                className="btn btn-sm btn-outline-secondary"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  editAddress(address.id)
-                                }}
-                              >
-                                <i className="bi bi-pencil"></i>
-                              </button>
                             </div>
                             
                             {/* Leaflet Map Display */}

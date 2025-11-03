@@ -240,14 +240,6 @@ export default function UserAccountLayout() {
                   </li>
                   <li className="nav-item">
                     <NavLink 
-                      to="/auth/account/notifications" 
-                      className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
-                    >
-                      <i className="bi bi-bell me-2"></i>Notifications
-                    </NavLink>
-                  </li>
-                  <li className="nav-item">
-                    <NavLink 
                       to="/auth/account/security" 
                       className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
                     >

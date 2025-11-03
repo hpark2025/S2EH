@@ -1,0 +1,18 @@
+*   [33m8bdd01a[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Merge branch 'main' of https://github.com/hpark2025/S2EH
+[31m|[m[32m\[m  
+[31m|[m *   [33mfcd5e89[m Merge pull request #1 from hpark2025/cart-ui-improvements
+[31m|[m [33m|[m[34m\[m  
+[31m|[m [33m|[m *   [33mb1d3484[m[33m ([m[1;31morigin/cart-ui-improvements[m[33m)[m Merge branch 'main' of https://github.com/hpark2025/S2EH into cart-ui-improvements
+[31m|[m [33m|[m [35m|[m[33m\[m  
+[31m|[m [33m|[m [35m|[m[33m/[m  
+[31m|[m [33m|[m[33m/[m[35m|[m   
+[31m|[m [33m|[m * [33m942c45a[m cart ui fixed
+* [33m|[m [36m|[m [33m6c1533b[m cartpage
+[33m|[m[33m/[m [36m/[m  
+* [36m/[m [33mce3a974[m Update UserCartPage.jsx
+[36m|[m[36m/[m  
+* [33mbbd983e[m Fixed user Crud.
+* [33mdc8e1d5[m Fix UserHomePage to use Vite proxy and display all published products
+*   [33m7a02530[m Merge branch 'main' of https://github.com/hpark2025/S2EH
+[1;31m|[m[1;32m\[m  
+[1;31m|[m * [33m8e531bb[m remove something

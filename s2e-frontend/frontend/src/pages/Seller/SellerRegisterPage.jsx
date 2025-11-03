@@ -315,7 +315,7 @@ export default function SellerRegisterPage() {
 
       const response = await authAPI.sellerRegister(registrationData)
 
-      if (response.seller) {
+      if (response && response.seller) {
         setSuccess(true)
       } else {
         throw new Error('Registration failed - no seller data received')
@@ -323,7 +323,12 @@ export default function SellerRegisterPage() {
       
     } catch (error) {
       console.error('Registration error:', error)
-      const errorMessage = error.message || error.error || 'Registration failed. Please try again.'
+      // Extract error message from different error formats
+      const errorMessage = error?.message || 
+                          error?.response?.data?.message || 
+                          error?.data?.message || 
+                          error?.error?.message ||
+                          'Registration failed. Please try again.'
       setError(errorMessage)
     } finally {
       setIsLoading(false)

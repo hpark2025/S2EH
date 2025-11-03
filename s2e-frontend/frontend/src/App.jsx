@@ -32,7 +32,6 @@ import UserAccountLayout from './layout/UserAccountLayout.jsx'
 import UserAccountProfilePage from './pages/User/UserAccountProfilePage.jsx'
 import UserAccountOrdersPage from './pages/User/UserAccountOrdersPage.jsx'
 import UserAccountSettingsPage from './pages/User/UserAccountSettingsPage.jsx'
-import UserAccountNotificationsPage from './pages/User/UserAccountNotificationsPage.jsx'
 import UserAccountSecurityPage from './pages/User/UserAccountSecurityPage.jsx'
 import AdminProductsPage from './pages/Admin/AdminProductsPage.jsx'
 import AdminOrdersPage from './pages/Admin/AdminOrdersPage.jsx'
@@ -99,7 +98,6 @@ function App() {
             <Route path="profile" element={<UserAccountProfilePage />} />
             <Route path="orders" element={<UserAccountOrdersPage />} />
             <Route path="settings" element={<UserAccountSettingsPage />} />
-            <Route path="notifications" element={<UserAccountNotificationsPage />} />
             <Route path="security" element={<UserAccountSecurityPage />} />
           </Route>
         </Route>

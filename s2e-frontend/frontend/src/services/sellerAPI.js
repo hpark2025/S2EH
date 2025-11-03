@@ -189,10 +189,15 @@ export const sellerAPI = {
     // Update order status
     updateOrderStatus: async (id, statusData) => {
       try {
-        const response = await api.put(`/seller/orders/${id}`, statusData);
+        const url = `/api/seller/orders/${id}`;
+        console.log('📡 Updating order status:', { url, id, statusData });
+        const response = await api.put(url, statusData);
+        console.log('✅ Status update response:', response.data);
         return response.data;
       } catch (error) {
-        console.error('Failed to update order status:', error);
+        console.error('❌ Failed to update order status:', error);
+        console.error('❌ Error response:', error.response?.data);
+        console.error('❌ Error status:', error.response?.status);
         throw error;
       }
     }

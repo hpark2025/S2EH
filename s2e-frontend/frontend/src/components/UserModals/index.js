@@ -11,4 +11,4 @@ export { RemoveFromCartModal, ClearCartModal } from './CartPage';
 export { CheckoutAddAddressModal } from './CheckoutPage';
 
 // Product Details Page Modals
-export { ProductImageModal, ProductReviewModal } from './ProductDetailsPage';
+export { ProductImageModal, ProductReviewModal, ProductChatModal } from './ProductDetailsPage';

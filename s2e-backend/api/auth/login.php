@@ -62,8 +62,23 @@ $stmt->execute();
 
 $user = $stmt->fetch();
 
-// Verify user exists and password is correct
-if (!$user || !Auth::verifyPassword($password, $user['password'])) {
+// Debug logging
+error_log("🔍 Login attempt - User Type: {$userType}, Email: {$email}, Table: {$table}");
+error_log("🔍 User found: " . ($user ? 'YES (ID: ' . $user['id'] . ')' : 'NO'));
+
+// Verify user exists
+if (!$user) {
+    error_log("❌ User not found in {$table} table for email: {$email}");
+    Response::error('Invalid email or password', 401);
+}
+
+// Verify password
+$passwordValid = Auth::verifyPassword($password, $user['password']);
+error_log("🔍 Password verification: " . ($passwordValid ? 'VALID' : 'INVALID'));
+error_log("🔍 Password hash in DB: " . substr($user['password'], 0, 20) . '...');
+
+if (!$passwordValid) {
+    error_log("❌ Password verification failed for user ID: {$user['id']}");
     Response::error('Invalid email or password', 401);
 }
 

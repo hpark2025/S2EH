@@ -4,15 +4,22 @@ import {
   OrderQuickLookModal
 } from '../../components/SellerModals'
 import QuickTemplatesModal from '../../components/SellerModals/SellerMessagesPage/QuickTemplatesModal'
+import { messagesAPI } from '../../services/messagesAPI'
+import { toast } from 'react-hot-toast'
 
 export default function SellerMessagesPage() {
-  // Sample conversations data matching messages.html
-  const [conversations] = useState([])
+  const [conversations, setConversations] = useState([])
+  const [messages, setMessages] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [loadingMessages, setLoadingMessages] = useState(false)
+  const [sending, setSending] = useState(false)
 
   const [activeConversation, setActiveConversation] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [messageFilter, setMessageFilter] = useState('all')
   const [messageInput, setMessageInput] = useState('')
+  const [selectedImage, setSelectedImage] = useState(null)
+  const [imagePreview, setImagePreview] = useState(null)
   
   // Modal states
   const [showCustomerDetailsModal, setShowCustomerDetailsModal] = useState(false)
@@ -23,9 +30,136 @@ export default function SellerMessagesPage() {
   // Refs
   const chatMessagesRef = useRef(null)
   const messageInputRef = useRef(null)
+  const fileInputRef = useRef(null)
+
+  // Load conversations on mount
+  useEffect(() => {
+    loadConversations()
+  }, [])
+
+  const markMessagesAsRead = async (customerId) => {
+    if (!customerId) return
+    
+    try {
+      await messagesAPI.markAsRead(null, customerId)
+      // Refresh conversations to update unread counts
+      await loadConversations()
+      // Dispatch event to update header unread count (if seller has header badge)
+      window.dispatchEvent(new Event('messagesUpdated'))
+    } catch (error) {
+      console.error('Failed to mark messages as read:', error)
+      // Don't show error to user, just log it
+    }
+  }
+
+  // Load messages when conversation is selected
+  useEffect(() => {
+    if (activeConversation) {
+      loadMessages(activeConversation)
+      // Mark messages as read when conversation is opened
+      markMessagesAsRead(activeConversation)
+    } else {
+      setMessages([])
+    }
+  }, [activeConversation])
 
   // Get current conversation
-  const currentConversation = conversations.find(conv => conv.id === activeConversation)
+  const currentConversation = conversations.find(conv => conv.customer_id === activeConversation)
+
+  const loadConversations = async () => {
+    try {
+      setLoading(true)
+      const response = await messagesAPI.getConversations()
+      
+      if (response.conversations) {
+        // Map backend data to frontend format
+        const mappedConversations = response.conversations.map(conv => ({
+          customer_id: conv.customer_id,
+          name: conv.customer_first_name && conv.customer_last_name
+            ? `${conv.customer_first_name} ${conv.customer_last_name}`
+            : 'Customer',
+          avatar: getInitials(conv.customer_first_name, conv.customer_last_name),
+          lastMessage: conv.last_message || 'No messages yet',
+          lastMessageTime: formatTime(conv.last_message_time),
+          unreadCount: parseInt(conv.unread_count) || 0,
+          status: 'offline' // Can be enhanced later with real-time status
+        }))
+        
+        setConversations(mappedConversations)
+      }
+    } catch (error) {
+      console.error('Failed to load conversations:', error)
+      toast.error('Failed to load conversations')
+      setConversations([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadMessages = async (customerId) => {
+    if (!customerId) return
+    
+    try {
+      setLoadingMessages(true)
+      const response = await messagesAPI.getMessages(null, customerId)
+      
+      if (response.messages) {
+        setMessages(response.messages)
+        // Auto-scroll to bottom after messages load
+        setTimeout(() => {
+          if (chatMessagesRef.current) {
+            chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight
+          }
+        }, 100)
+      } else {
+        setMessages([])
+      }
+    } catch (error) {
+      console.error('Failed to load messages:', error)
+      toast.error('Failed to load messages')
+      setMessages([])
+    } finally {
+      setLoadingMessages(false)
+    }
+  }
+
+  const getInitials = (firstName, lastName) => {
+    const first = firstName ? firstName.charAt(0).toUpperCase() : 'C'
+    const last = lastName ? lastName.charAt(0).toUpperCase() : ''
+    return first + last
+  }
+
+  const formatTime = (timestamp) => {
+    if (!timestamp) return ''
+    
+    const date = new Date(timestamp)
+    const now = new Date()
+    const diff = now - date
+    
+    // Just now
+    if (diff < 60000) return 'Just now'
+    
+    // Minutes ago
+    if (diff < 3600000) {
+      const minutes = Math.floor(diff / 60000)
+      return `${minutes}m ago`
+    }
+    
+    // Hours ago
+    if (diff < 86400000) {
+      const hours = Math.floor(diff / 3600000)
+      return `${hours}h ago`
+    }
+    
+    // Days ago
+    if (diff < 604800000) {
+      const days = Math.floor(diff / 86400000)
+      return `${days}d ago`
+    }
+    
+    // Date format
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' })
+  }
 
   // Filter conversations
   const filteredConversations = conversations.filter(conv => {
@@ -42,10 +176,10 @@ export default function SellerMessagesPage() {
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
-    if (chatMessagesRef.current) {
+    if (chatMessagesRef.current && messages.length > 0) {
       chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight
     }
-  }, [currentConversation?.messages])
+  }, [messages])
 
   // Auto-resize textarea
   const handleInputChange = (e) => {
@@ -63,36 +197,110 @@ export default function SellerMessagesPage() {
     }
   }
 
-  // Send message function
-  const sendMessage = () => {
-    if (messageInput.trim() && currentConversation) {
-      const now = new Date()
-      const timeStr = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
-      
-      // In real app, this would be handled by state management (Redux, Context, etc.)
-      // For now, we'll just clear the input and show feedback
-      console.log('Sending message:', messageInput, 'to:', currentConversation.name)
-      
-      setMessageInput('')
-      if (messageInputRef.current) {
-        messageInputRef.current.style.height = 'auto'
+  // Handle image selection
+  const handleImageSelect = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please select an image file')
+        return
       }
       
-      // Here you would typically dispatch an action to send the message
-      alert(`Message sent to ${currentConversation.name}: "${messageInput}"`)
+      // Validate file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Image size must be less than 5MB')
+        return
+      }
+      
+      setSelectedImage(file)
+      
+      // Create preview
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setImagePreview(reader.result)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  // Remove selected image
+  const removeSelectedImage = () => {
+    setSelectedImage(null)
+    setImagePreview(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  // Send message function
+  const sendMessage = async () => {
+    if ((!messageInput.trim() && !selectedImage) || !currentConversation || sending) return
+    
+    const messageText = messageInput.trim()
+    const customerId = currentConversation.customer_id
+    
+    try {
+      setSending(true)
+      
+      const messageData = {
+        receiver_id: parseInt(customerId, 10),
+        receiver_type: 'user',
+        message: messageText || '' // Allow empty message if image is attached
+      }
+      
+      if (selectedImage) {
+        messageData.image = selectedImage
+      }
+      
+      const response = await messagesAPI.sendMessage(messageData)
+      
+      if (response.message) {
+        // Add the new message to the messages list
+        setMessages(prev => [...prev, response.message])
+        
+        // Clear input and image
+        setMessageInput('')
+        setSelectedImage(null)
+        setImagePreview(null)
+        if (messageInputRef.current) {
+          messageInputRef.current.style.height = 'auto'
+        }
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ''
+        }
+        
+        // Auto-scroll to bottom
+        setTimeout(() => {
+          if (chatMessagesRef.current) {
+            chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight
+          }
+        }, 100)
+        
+        // Refresh conversations to update last message
+        loadConversations()
+        
+        // Dispatch event to update header unread count
+        window.dispatchEvent(new Event('messagesUpdated'))
+      }
+    } catch (error) {
+      console.error('Failed to send message:', error)
+      toast.error(error.message || 'Failed to send message')
+    } finally {
+      setSending(false)
     }
   }
 
   // Handle conversation selection
-  const handleConversationSelect = (conversationId) => {
-    setActiveConversation(conversationId)
+  const handleConversationSelect = (customerId) => {
+    setActiveConversation(customerId)
   }
 
   // Handle customer details modal
   const handleShowCustomerDetails = () => {
     if (currentConversation) {
       setSelectedCustomer({
-        id: currentConversation.id,
+        id: currentConversation.customer_id,
         name: currentConversation.name,
         initials: currentConversation.avatar,
         status: currentConversation.status
@@ -219,25 +427,45 @@ export default function SellerMessagesPage() {
           
           {/* Conversation List */}
           <div className="conversation-list">
-            {filteredConversations.map((conversation) => (
-              <div 
-                key={conversation.id}
-                className={`conversation-item ${activeConversation === conversation.id ? 'active' : ''}`}
-                onClick={() => handleConversationSelect(conversation.id)}
-              >
-                <div className="customer-avatar">{conversation.avatar}</div>
-                <div className="flex-grow-1">
-                  <div className="d-flex justify-content-between align-items-start">
-                    <h6 className="mb-0">{conversation.name}</h6>
-                    <small className="text-muted">{conversation.lastMessageTime}</small>
-                  </div>
-                  <p className="mb-0 text-muted small">{conversation.lastMessage}</p>
+            {loading ? (
+              <div className="text-center p-4">
+                <div className="spinner-border spinner-border-sm text-success" role="status">
+                  <span className="visually-hidden">Loading...</span>
                 </div>
-                {conversation.unreadCount > 0 && (
-                  <div className="unread-badge">{conversation.unreadCount}</div>
-                )}
+                <p className="text-muted mt-2 small">Loading conversations...</p>
               </div>
-            ))}
+            ) : filteredConversations.length === 0 ? (
+              <div className="text-center p-4">
+                <i className="bi bi-inbox fs-1 text-muted mb-2"></i>
+                <p className="text-muted small">No conversations yet</p>
+              </div>
+            ) : (
+              filteredConversations.map((conversation) => (
+                <div 
+                  key={conversation.customer_id}
+                  className={`conversation-item ${activeConversation === conversation.customer_id ? 'active' : ''}`}
+                  onClick={() => handleConversationSelect(conversation.customer_id)}
+                >
+                  <div className="customer-avatar">{conversation.avatar}</div>
+                  <div className="flex-grow-1">
+                    <div className="d-flex justify-content-between align-items-start">
+                      <h6 className="mb-0">{conversation.name}</h6>
+                      <small className="text-muted">{conversation.lastMessageTime}</small>
+                    </div>
+                    <p className="mb-0 text-muted small" style={{
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {conversation.lastMessage}
+                    </p>
+                  </div>
+                  {conversation.unreadCount > 0 && (
+                    <div className="unread-badge">{conversation.unreadCount}</div>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         </div>
         
@@ -277,22 +505,118 @@ export default function SellerMessagesPage() {
               
               {/* Chat Body */}
               <div className="chat-body" ref={chatMessagesRef}>
-                {currentConversation.messages.map((message) => (
-                  <div 
-                    key={message.id}
-                    className={`message-bubble ${message.sender === 'seller' ? 'sent' : 'received'}`}
-                  >
-                    <div className="message-content">{message.text}</div>
-                    <div className="message-time">{message.time}</div>
+                {loadingMessages ? (
+                  <div className="text-center p-4">
+                    <div className="spinner-border spinner-border-sm text-success" role="status">
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
                   </div>
-                ))}
+                ) : messages.length === 0 ? (
+                  <div className="text-center p-4">
+                    <i className="bi bi-chat-dots fs-1 text-muted mb-2"></i>
+                    <p className="text-muted">No messages yet. Start the conversation!</p>
+                  </div>
+                ) : (
+                  messages.map((message) => {
+                    const isFromSeller = message.sender_type === 'seller'
+                    return (
+                      <div 
+                        key={message.id}
+                        className={`message-bubble ${isFromSeller ? 'sent' : 'received'}`}
+                      >
+                        <div className="message-content">
+                          {message.subject && (
+                            <div className="mb-1" style={{ fontSize: '0.85em', opacity: 0.9 }}>
+                              <strong>{message.subject}</strong>
+                            </div>
+                          )}
+                          {message.attachment_url && (
+                            <div className="mb-2" style={{ borderRadius: '8px', overflow: 'hidden' }}>
+                              <img 
+                                src={`http://localhost:8080/S2EH/s2e-backend${message.attachment_url}`}
+                                alt="Attachment"
+                                style={{ 
+                                  maxWidth: '300px', 
+                                  maxHeight: '300px',
+                                  width: '100%',
+                                  height: 'auto',
+                                  borderRadius: '8px',
+                                  cursor: 'pointer'
+                                }}
+                                onClick={() => {
+                                  window.open(`http://localhost:8080/S2EH/s2e-backend${message.attachment_url}`, '_blank')
+                                }}
+                              />
+                            </div>
+                          )}
+                          {message.message && (
+                            <div>{message.message}</div>
+                          )}
+                        </div>
+                        <div className="message-time">{formatTime(message.created_at)}</div>
+                      </div>
+                    )
+                  })
+                )}
               </div>
+              
+              {/* Image Preview */}
+              {imagePreview && (
+                <div className="image-preview-container" style={{ 
+                  padding: '10px 15px', 
+                  borderTop: '1px solid #e0e0e0',
+                  background: '#f8f9fa'
+                }}>
+                  <div style={{ position: 'relative', display: 'inline-block' }}>
+                    <img 
+                      src={imagePreview} 
+                      alt="Preview" 
+                      style={{ 
+                        maxWidth: '200px', 
+                        maxHeight: '200px', 
+                        borderRadius: '8px',
+                        border: '1px solid #ddd'
+                      }} 
+                    />
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-danger"
+                      onClick={removeSelectedImage}
+                      style={{
+                        position: 'absolute',
+                        top: '5px',
+                        right: '5px',
+                        borderRadius: '50%',
+                        width: '24px',
+                        height: '24px',
+                        padding: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <i className="bi bi-x"></i>
+                    </button>
+                  </div>
+                </div>
+              )}
               
               {/* Chat Footer */}
               <div className="chat-footer">
                 <div className="message-input-group">
-                  <button className="btn btn-outline-secondary" title="Attach File">
-                    <i className="bi bi-paperclip"></i>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept="image/*"
+                    onChange={handleImageSelect}
+                    style={{ display: 'none' }}
+                  />
+                  <button 
+                    className="btn btn-outline-secondary" 
+                    title="Attach Photo"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <i className="bi bi-image"></i>
                   </button>
                   <button 
                     className="btn btn-outline-secondary" 
@@ -310,8 +634,18 @@ export default function SellerMessagesPage() {
                     onChange={handleInputChange}
                     onKeyDown={handleKeyDown}
                   />
-                  <button className="btn-seller" onClick={sendMessage}>
-                    <i className="bi bi-send"></i>
+                  <button 
+                    className="btn-seller" 
+                    onClick={sendMessage}
+                    disabled={sending || (!messageInput.trim() && !selectedImage)}
+                  >
+                    {sending ? (
+                      <div className="spinner-border spinner-border-sm" role="status">
+                        <span className="visually-hidden">Sending...</span>
+                      </div>
+                    ) : (
+                      <i className="bi bi-send"></i>
+                    )}
                   </button>
                 </div>
               </div>

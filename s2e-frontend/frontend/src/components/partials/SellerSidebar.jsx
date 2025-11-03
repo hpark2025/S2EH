@@ -1,6 +1,8 @@
 import { NavLink } from 'react-router-dom'
+import { useUnreadMessages } from '../../hooks/useUnreadMessages.js'
 
 export default function SellerSidebar({ collapsed = false }) {
+  const { unreadCount } = useUnreadMessages()
   return (
     <nav className={`seller-sidebar${collapsed ? ' collapsed' : ''}`}>
       <div className="sidebar-header">
@@ -72,13 +74,33 @@ export default function SellerSidebar({ collapsed = false }) {
           </NavLink>
         </div>
         
-        <div className="nav-item">
+        <div className="nav-item" style={{ position: 'relative' }}>
           <NavLink 
             to="/seller/messages" 
             className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
           >
             <i className="bi bi-chat-dots"></i>
             <span>Messages</span>
+            {unreadCount > 0 && (
+              <span 
+                className="badge bg-danger position-absolute"
+                style={{
+                  top: '8px',
+                  right: collapsed ? '8px' : '20px',
+                  borderRadius: '50%',
+                  minWidth: '20px',
+                  height: '20px',
+                  fontSize: '0.7rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0 6px',
+                  zIndex: 10
+                }}
+              >
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
           </NavLink>
         </div>
         

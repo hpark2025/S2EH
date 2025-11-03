@@ -2,12 +2,14 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { useAppState } from '../context/AppContext.jsx'
 import { useCustomerAutoLogout } from '../hooks/useAutoLogout.js'
 import { useCart } from '../hooks/useCart.js'
+import { useUnreadMessages } from '../hooks/useUnreadMessages.js'
 import { cookieAuth } from '../utils/cookieAuth.js'
 
 function Header() {
   const { state, logout: contextLogout } = useAppState()
   const { isLoggedIn } = state
   const { cartCount } = useCart()
+  const { unreadCount } = useUnreadMessages()
   const { logout } = useCustomerAutoLogout(() => {
     console.log('Customer auto-logout triggered')
   })
@@ -63,7 +65,9 @@ function Header() {
             <>
               <NavLink to="/auth/chat" className="chat-wrapper" aria-label="Chat">
                 <i className="bi bi-chat-dots cart-icon"></i>
-                <span className="badge bg-danger position-absolute top-0 start-100 translate-middle">3</span>
+                {unreadCount > 0 && (
+                  <span className="badge bg-danger position-absolute top-0 start-100 translate-middle">{unreadCount}</span>
+                )}
               </NavLink>
               <NavLink to="/user/cart" className="basket-wrapper" aria-label="Basket">
                 <i className="bi bi-basket cart-icon"></i>

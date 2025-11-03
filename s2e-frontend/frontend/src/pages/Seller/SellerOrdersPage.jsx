@@ -15,14 +15,115 @@ export default function SellerOrdersPage() {
     loadOrders();
   }, []);
 
+  // Get authentication token
+  const getAuthToken = () => {
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+      const [name, value] = cookie.trim().split('=');
+      if (name === 'auth_token' || name === 'token' || name === 'seller_token' || name === 'user_token') {
+        return value;
+      }
+    }
+    return localStorage.getItem('token') || 
+           localStorage.getItem('sellerToken') || 
+           localStorage.getItem('userToken');
+  };
+
   const loadOrders = async () => {
     try {
       setLoading(true);
-      const response = await sellerAPI.orders.getOrders();
-      setOrders(response.orders || []);
+      const token = getAuthToken();
+      
+      if (!token) {
+        console.log('❌ No auth token found');
+        setOrders([]);
+        setLoading(false);
+        return;
+      }
+
+      console.log('📦 Loading seller orders from database...');
+      
+      const response = await fetch('http://localhost:8080/S2EH/s2e-backend/api/orders/index.php', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      console.log('✅ Response status:', response.status);
+
+      const text = await response.text();
+      console.log('📄 Response text:', text.substring(0, 500));
+
+      const data = JSON.parse(text);
+      console.log('✅ Orders response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to load orders');
+      }
+
+      // Map database orders to component format
+      const ordersData = data.data?.orders || data.orders || [];
+      
+      console.log('📦 Raw orders data:', ordersData);
+      
+      const mappedOrders = ordersData.map(order => {
+        console.log('📦 Processing order:', order);
+        console.log('📦 All order keys:', Object.keys(order));
+        console.log('📦 Order first_name:', order.first_name);
+        console.log('📦 Order last_name:', order.last_name);
+        console.log('📦 Order customer_email:', order.customer_email);
+        console.log('📦 Order user_id:', order.user_id);
+        
+        // Format customer data - backend returns first_name, last_name, customer_email directly for sellers
+        // Handle null, empty strings, and whitespace
+        const firstName = (order.first_name && order.first_name.trim()) || null;
+        const lastName = (order.last_name && order.last_name.trim()) || null;
+        const email = (order.customer_email && order.customer_email.trim()) || null;
+        
+        const customer = {
+          first_name: firstName,
+          last_name: lastName,
+          email: email,
+          phone: order.customer?.phone || null
+        };
+        
+        console.log('📦 Mapped customer:', customer);
+        console.log('📦 Customer has name:', !!(firstName || lastName));
+
+        // Map order items
+        const items = (order.items || []).map(item => ({
+          title: item.product_title || item.title || 'Product',
+          product_title: item.product_title || item.title,
+          quantity: parseInt(item.quantity || 1),
+          unit_price: parseFloat(item.unit_price || 0),
+          subtotal: parseFloat(item.subtotal || 0)
+        }));
+
+        return {
+          id: order.id,
+          user_id: order.user_id, // Keep for debugging
+          order_number: order.order_number || `ORD-${order.id}`,
+          customer: customer,
+          items: items,
+          total: parseFloat(order.total || 0),
+          status: order.status || 'pending',
+          created_at: order.created_at,
+          shipping_address: order.shipping_address || null,
+          // Keep original order data for fallback
+          first_name: order.first_name,
+          last_name: order.last_name,
+          customer_email: order.customer_email
+        };
+      });
+
+      console.log('📦 Mapped orders:', mappedOrders);
+      setOrders(mappedOrders);
     } catch (error) {
-      console.error('Failed to load orders:', error);
-      toast.error('Failed to load orders');
+      console.error('❌ Failed to load orders:', error);
+      toast.error(error.message || 'Failed to load orders');
+      setOrders([]);
     } finally {
       setLoading(false);
     }
@@ -30,12 +131,22 @@ export default function SellerOrdersPage() {
 
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     try {
-      await sellerAPI.orders.updateOrderStatus(orderId, { status: newStatus });
-      toast.success(`Order status updated to ${newStatus}`);
+      console.log('🔄 Updating order status:', { orderId, newStatus, orderIdType: typeof orderId });
+      // Ensure orderId is a string/number
+      const orderIdStr = String(orderId);
+      await sellerAPI.orders.updateOrderStatus(orderIdStr, { status: newStatus });
+      const statusName = newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
+      toast.success(`Order status updated to ${statusName}`);
       loadOrders();
     } catch (error) {
-      console.error('Failed to update order status:', error);
-      toast.error('Failed to update order status');
+      console.error('❌ Failed to update order status:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      const errorMessage = error.response?.data?.message || error.response?.data?.errors?.status?.[0] || error.message || 'Failed to update order status';
+      toast.error(errorMessage);
     }
   };
 
@@ -59,10 +170,11 @@ export default function SellerOrdersPage() {
 
   const formatPrice = (price) => {
     if (!price || isNaN(price)) return '₱0.00';
+    // Price is already in PHP, not in cents
     return new Intl.NumberFormat('en-PH', {
       style: 'currency',
       currency: 'PHP'
-    }).format(price / 100);
+    }).format(price);
   };
 
   const getStatusOptions = (currentStatus) => {
@@ -240,8 +352,8 @@ export default function SellerOrdersPage() {
       </div>
 
       {/* Orders Table */}
-      <div className="card">
-        <div className="card-body">
+      <div className="card" style={{ overflow: 'visible' }}>
+        <div className="card-body" style={{ overflow: 'visible' }}>
           {filteredOrders.length === 0 ? (
             <div className="text-center py-5">
               <i className="bi bi-receipt display-1 text-muted"></i>
@@ -249,13 +361,13 @@ export default function SellerOrdersPage() {
               <p className="text-muted">Orders will appear here when customers make purchases</p>
             </div>
           ) : (
-            <div className="table-responsive">
+            <div className="table-responsive" style={{ overflow: 'visible' }}>
               <table className="table table-hover">
                 <thead>
                   <tr>
                     <th>Order ID</th>
                     <th>Customer</th>
-                    <th>Items</th>
+                    <th>Products</th>
                     <th>Total</th>
                     <th>Status</th>
                     <th>Date</th>
@@ -266,62 +378,126 @@ export default function SellerOrdersPage() {
                   {filteredOrders.map((order) => (
                     <tr key={order.id}>
                       <td>
-                        <strong>#{order.id.slice(-8)}</strong>
+                        <strong>{order.order_number || `#${order.id}`}</strong>
                       </td>
                       <td>
                         <div>
-                          <div className="fw-bold">{order.customer?.first_name} {order.customer?.last_name}</div>
-                          <small className="text-muted">{order.customer?.email}</small>
+                          {(() => {
+                            const firstName = order.customer?.first_name || order.first_name;
+                            const lastName = order.customer?.last_name || order.last_name;
+                            const email = order.customer?.email || order.customer_email;
+                            
+                            if (firstName || lastName) {
+                              return (
+                                <>
+                                  <div className="fw-bold">
+                                    {(firstName || '').trim()} {(lastName || '').trim()}
+                                  </div>
+                                  <small className="text-muted">{email || 'No email'}</small>
+                                </>
+                              );
+                            } else {
+                              return (
+                                <div className="text-muted">
+                                  <div>N/A</div>
+                                  <small style={{ fontSize: '0.75rem' }}>
+                                    User ID: {order.user_id || 'N/A'}
+                                  </small>
+                                </div>
+                              );
+                            }
+                          })()}
                         </div>
                       </td>
                       <td>
-                        <span className="badge bg-info">
-                          {order.items?.length || 0} items
-                        </span>
+                        <div style={{ maxWidth: '200px' }}>
+                          {order.items && order.items.length > 0 ? (
+                            <div>
+                              {order.items.slice(0, 2).map((item, idx) => (
+                                <div key={idx} className="small">
+                                  <span className="text-muted">
+                                    {item.product_title || item.title || 'Product'} 
+                                    {item.quantity > 1 && ` (x${item.quantity})`}
+                                  </span>
+                                </div>
+                              ))}
+                              {order.items.length > 2 && (
+                                <div className="small text-muted">
+                                  +{order.items.length - 2} more
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="badge bg-secondary">No items</span>
+                          )}
+                        </div>
                       </td>
                       <td>
                         <strong>{formatPrice(order.total)}</strong>
                       </td>
                       <td>
                         <span className={`badge ${getStatusBadge(order.status)}`}>
-                          {order.status}
+                          {order.status?.toUpperCase() || 'PENDING'}
                         </span>
                       </td>
                       <td>
-                        {new Date(order.created_at).toLocaleDateString()}
+                        {order.created_at ? new Date(order.created_at).toLocaleDateString() : 'N/A'}
                       </td>
                       <td>
-                        <div className="btn-group" role="group">
+                        <div className="btn-group" role="group" style={{ display: 'flex', gap: '5px' }}>
                           <button
                             className="btn btn-sm btn-outline-primary"
                             onClick={() => openOrderModal(order)}
                             title="View Details"
+                            style={{ minWidth: '38px' }}
                           >
                             <i className="bi bi-eye"></i>
                           </button>
-                          {getStatusOptions(order.status).length > 0 && (
-                            <div className="dropdown">
+                          {getStatusOptions(order.status).length > 0 ? (
+                            <div className="dropdown" style={{ position: 'relative' }}>
                               <button
                                 className="btn btn-sm btn-outline-success dropdown-toggle"
                                 type="button"
+                                id={`statusDropdown-${order.id}`}
                                 data-bs-toggle="dropdown"
+                                aria-expanded="false"
                                 title="Update Status"
+                                style={{ minWidth: '38px' }}
                               >
                                 <i className="bi bi-arrow-up-circle"></i>
                               </button>
-                              <ul className="dropdown-menu">
+                              <ul 
+                                className="dropdown-menu" 
+                                aria-labelledby={`statusDropdown-${order.id}`}
+                                style={{ 
+                                  position: 'absolute',
+                                  zIndex: 1050,
+                                  top: '100%',
+                                  right: 0,
+                                  marginTop: '0.125rem'
+                                }}
+                              >
                                 {getStatusOptions(order.status).map((status) => (
                                   <li key={status}>
                                     <button
                                       className="dropdown-item"
                                       onClick={() => handleUpdateOrderStatus(order.id, status)}
                                     >
-                                      Mark as {status}
+                                      {status.charAt(0).toUpperCase() + status.slice(1)}
                                     </button>
                                   </li>
                                 ))}
                               </ul>
                             </div>
+                          ) : (
+                            <button
+                              className="btn btn-sm btn-outline-secondary"
+                              disabled
+                              title="No status updates available"
+                              style={{ minWidth: '38px', opacity: 0.5 }}
+                            >
+                              <i className="bi bi-lock"></i>
+                            </button>
                           )}
                         </div>
                       </td>
@@ -340,7 +516,7 @@ export default function SellerOrdersPage() {
           <div className="modal-dialog modal-lg">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Order Details #{selectedOrder.id.slice(-8)}</h5>
+                <h5 className="modal-title">Order Details</h5>
                 <button
                   type="button"
                   className="btn-close"
@@ -353,8 +529,7 @@ export default function SellerOrdersPage() {
                     <h6>Customer Information</h6>
                     <p>
                       <strong>Name:</strong> {selectedOrder.customer?.first_name} {selectedOrder.customer?.last_name}<br />
-                      <strong>Email:</strong> {selectedOrder.customer?.email}<br />
-                      <strong>Phone:</strong> {selectedOrder.customer?.phone || 'N/A'}
+                      <strong>Email:</strong> {selectedOrder.customer?.email}
                     </p>
                   </div>
                   <div className="col-md-6">
@@ -429,7 +604,7 @@ export default function SellerOrdersPage() {
                               setShowOrderModal(false);
                             }}
                           >
-                            Mark as {status}
+                            {status.charAt(0).toUpperCase() + status.slice(1)}
                           </button>
                         </li>
                       ))}

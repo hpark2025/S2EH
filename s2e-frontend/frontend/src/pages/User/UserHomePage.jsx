@@ -1,13 +1,15 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "react-hot-toast"
 import UserFooter from "../../components/partials/UserFooter.jsx"
 import { useCart } from "../../hooks/useCart"
 import { userCartAPI } from "../../services/userCartAPI"
+import { useAppState } from "../../context/AppContext.jsx"
 
 export default function UserHomePage() {
   const navigate = useNavigate()
   const { addToCart } = useCart()
+  const { state } = useAppState()
   const [featuredProducts, setFeaturedProducts] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -134,6 +136,24 @@ export default function UserHomePage() {
     return { quantity: 0, manage_inventory: false };
   }
 
+  // Filter products based on search term (real-time filtering)
+  const filteredProducts = useMemo(() => {
+    if (!state.searchTerm || state.searchTerm.trim() === '') {
+      return featuredProducts;
+    }
+    
+    const searchLower = state.searchTerm.toLowerCase().trim();
+    return featuredProducts.filter(product => {
+      const title = (product.title || product.name || '').toLowerCase();
+      const description = (product.description || '').toLowerCase();
+      const sellerName = (product.seller_name || '').toLowerCase();
+      
+      return title.includes(searchLower) || 
+             description.includes(searchLower) || 
+             sellerName.includes(searchLower);
+    });
+  }, [featuredProducts, state.searchTerm]);
+
   const handleAddToCart = async (product) => {
     try {
       console.log('🛒 Adding product to cart:', product);
@@ -213,10 +233,23 @@ export default function UserHomePage() {
               <h4 className="mt-3 text-muted">No products available</h4>
               <p className="text-muted">Check back later for new products</p>
             </div>
+          ) : filteredProducts.length === 0 && state.searchTerm ? (
+            <div className="text-center py-5">
+              <i className="bi bi-search display-1 text-muted"></i>
+              <h4 className="mt-3 text-muted">No products found</h4>
+              <p className="text-muted">Try adjusting your search: "{state.searchTerm}"</p>
+            </div>
           ) : (
             <>
+              {state.searchTerm && (
+                <div className="mb-3 text-center">
+                  <p className="text-muted">
+                    Showing {filteredProducts.length} result{filteredProducts.length !== 1 ? 's' : ''} for "{state.searchTerm}"
+                  </p>
+                </div>
+              )}
               <div className="row g-4">
-                {featuredProducts.map((product) => {
+                {filteredProducts.map((product) => {
                   const price = getProductPrice(product);
                   const image = getProductImage(product);
                   const name = getProductName(product);

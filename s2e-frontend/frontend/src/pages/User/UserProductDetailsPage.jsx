@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useAppState } from '../../context/AppContext.jsx'
 import UserConditionalCategoryLink from '../../components/partials/UserConditionalCategoryLink.jsx'
 import UserFooter from '../../components/partials/UserFooter.jsx'
-import { ProductImageModal, ProductReviewModal } from '../../components/UserModals'
+import { ProductImageModal, ProductReviewModal, ProductChatModal } from '../../components/UserModals'
 import { productsAPI } from '../../services/authAPI.js'
 import { userCartAPI } from '../../services/userCartAPI.js'
 import { useCart } from '../../hooks/useCart.js'
@@ -18,6 +18,7 @@ export default function UserProductDetailsPage() {
   const [activeTab, setActiveTab] = useState('description')
   const [showImageModal, setShowImageModal] = useState(false)
   const [showReviewModal, setShowReviewModal] = useState(false)
+  const [showChatModal, setShowChatModal] = useState(false)
   const [quantity, setQuantity] = useState(1)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [isWishlisted, setIsWishlisted] = useState(false)
@@ -88,7 +89,24 @@ export default function UserProductDetailsPage() {
         setLoading(true)
         setError(null)
         const response = await productsAPI.getProduct(id)
-        setProduct(response.product)
+        console.log('📦 Product details loaded:', response.product)
+        console.log('📦 Rating data:', {
+          average_rating: response.product.average_rating,
+          review_count: response.product.review_count
+        })
+        
+        // Map backend fields to frontend format
+        const productData = {
+          ...response.product,
+          // Map rating fields for backward compatibility
+          avgRating: parseFloat(response.product.average_rating) || 0,
+          reviewCount: parseInt(response.product.review_count) || 0,
+          // Keep original values as well
+          average_rating: parseFloat(response.product.average_rating) || 0,
+          review_count: parseInt(response.product.review_count) || 0
+        }
+        
+        setProduct(productData)
       } catch (error) {
         console.error('Error loading product:', error)
         setError('Failed to load product details')
@@ -189,10 +207,25 @@ export default function UserProductDetailsPage() {
   };
 
   const chatWithSeller = () => {
-    if (!product) return
-    const sellerId = product.sellerId || product.seller?.id || 'unknown'
-    const path = isLoggedIn ? `/auth/chat?seller=${sellerId}` : `/login`
-    navigate(path)
+    if (!isLoggedIn) {
+      navigate('/login')
+      return
+    }
+    
+    if (!product) {
+      toast.error('Product information not available')
+      return
+    }
+    
+    // Extract seller_id from product data (PHP backend returns seller_id directly)
+    const sellerId = product.seller_id || product.sellerId || product.seller?.id
+    
+    if (!sellerId || sellerId === 'unknown') {
+      toast.error('Seller information not available')
+      return
+    }
+    
+    setShowChatModal(true)
   }
 
   const viewSellerProfile = () => {
@@ -516,18 +549,15 @@ export default function UserProductDetailsPage() {
                 </div>
                 <div className="flex-grow-1">
                   <h6 className="mb-1">{product.seller}</h6>
-                  <small className="text-muted">({product.reviewCount || 0} reviews)</small>
+                  <small className="text-muted">({product.review_count || product.reviewCount || 0} reviews)</small>
                   <br />
                   <small className="text-muted">
                     <i className="bi bi-geo-alt me-1"></i>Sagnay, Camarines Sur
                   </small>
                 </div>
                 <div>
-                  <button className="btn btn-outline-success btn-sm me-2" onClick={chatWithSeller}>
+                  <button className="btn btn-outline-success btn-sm" onClick={chatWithSeller}>
                     <i className="bi bi-chat me-1"></i>Chat
-                  </button>
-                  <button className="btn btn-outline-secondary btn-sm" onClick={viewSellerProfile}>
-                    <i className="bi bi-shop me-1"></i>Store
                   </button>
                 </div>
               </div>
@@ -536,10 +566,33 @@ export default function UserProductDetailsPage() {
             {/* Rating */}
             <div className="card border p-3 mb-4 bg-white">
               <div className="d-flex align-items-center">
-                <span className="text-warning me-2 fs-4">★</span>
-                <strong className="me-2 fs-5">{product.avgRating ? product.avgRating.toFixed(1) : '0'}</strong>
-                <span className="text-muted me-3">({product.reviewCount || 0} reviews)</span>
-                <a href="#reviews" className="text-primary text-decoration-none ms-auto">See all reviews</a>
+                {(() => {
+                  const rating = product.average_rating || product.avgRating || 0;
+                  const count = product.review_count || product.reviewCount || 0;
+                  const hasRating = rating > 0 && count > 0;
+                  
+                  return hasRating ? (
+                    <>
+                      <div className="me-2">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <i
+                            key={star}
+                            className={`bi ${star <= Math.round(rating) ? 'bi-star-fill text-warning' : 'bi-star text-muted'}`}
+                            style={{ fontSize: '1.2rem' }}
+                          />
+                        ))}
+                      </div>
+                      <strong className="me-2 fs-5">{rating.toFixed(1)}</strong>
+                      <span className="text-muted me-3">({count} {count === 1 ? 'review' : 'reviews'})</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-warning me-2 fs-4">★</span>
+                      <strong className="me-2 fs-5">0</strong>
+                      <span className="text-muted me-3">(0 reviews)</span>
+                    </>
+                  );
+                })()}
               </div>
             </div>
 
@@ -676,7 +729,7 @@ export default function UserProductDetailsPage() {
                   onClick={() => setActiveTab('reviews')}
                   type="button"
                 >
-                  <i className="bi bi-star me-1"></i>Reviews ({product.reviewCount || 0})
+                  <i className="bi bi-star me-1"></i>Reviews ({product.review_count || product.reviewCount || 0})
                 </button>
               </li>
               <li className="nav-item">
@@ -765,9 +818,17 @@ export default function UserProductDetailsPage() {
                 {/* Rating Summary */}
                 <div className="row mb-4">
                   <div className="col-md-4 text-center">
-                    <div className="display-4 text-warning mb-2">{product.avgRating?.toFixed(1) || '0.0'}</div>
-                    <div className="mb-2">{renderStars(product.avgRating || 0)}</div>
-                    <small className="text-muted">Based on {product.reviewCount || 0} reviews</small>
+                    {(() => {
+                      const rating = product.average_rating || product.avgRating || 0;
+                      const count = product.review_count || product.reviewCount || 0;
+                      return (
+                        <>
+                          <div className="display-4 text-warning mb-2">{rating.toFixed(1)}</div>
+                          <div className="mb-2">{renderStars(rating)}</div>
+                          <small className="text-muted">Based on {count} {count === 1 ? 'review' : 'reviews'}</small>
+                        </>
+                      );
+                    })()}
                   </div>
                   <div className="col-md-8 d-flex align-items-center justify-content-center">
                     <div className="text-center">
@@ -856,6 +917,17 @@ export default function UserProductDetailsPage() {
         onSubmit={handleSubmitReview}
         productName={product.name}
       />
+
+      {product && (
+        <ProductChatModal
+          show={showChatModal}
+          onClose={() => setShowChatModal(false)}
+          sellerId={product.seller_id || product.sellerId}
+          sellerName={product.seller_name || product.seller}
+          productName={product.title || product.name}
+          productId={product.id}
+        />
+      )}
 
       {/* Share Modal */}
       {showShareModal && (

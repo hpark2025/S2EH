@@ -1,18 +1,21 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAppState } from '../../context/AppContext.jsx'
 import UserFooter from '../../components/partials/UserFooter.jsx'
 import { RemoveFromCartModal, ClearCartModal } from '../../components/UserModals'
 import { userCartAPI } from '../../services/userCartAPI.js'
+import { cookieAuth } from '../../utils/cookieAuth.js'
 
 export default function UserCartPage() {
+  const navigate = useNavigate()
   const { state } = useAppState()
   const { isLoggedIn } = state
 
-  // States - using static data for visualization
-  const [loading, setLoading] = useState(false)
+  // States
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
-  const [isInitialLoad, setIsInitialLoad] = useState(false)
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   
   // Modal state
   const [showRemoveModal, setShowRemoveModal] = useState(false)
@@ -23,54 +26,193 @@ export default function UserCartPage() {
   const [selectedItems, setSelectedItems] = useState({})
   const [selectAll, setSelectAll] = useState(false)
   
-  // Static cart data for visualization matching the screenshot
-  const [cartItems, setCartItems] = useState([
-    {
-      id: 'prod-001',
-      title: 'Organic Pili Nuts (250g)',
-      price: 180,
-      quantity: 2,
-      thumbnail: '/images/unknown.jpg',
-      seller_name: "Maria's Farm",
-      sku: 'PILI-250G'
-    },
-    {
-      id: 'prod-002',
-      title: 'Fresh Tilapia (1kg)',
-      price: 150,
-      quantity: 1,
-      thumbnail: '/images/unknown.jpg',
-      seller_name: 'Sagnay Fisheries',
-      sku: 'FISH-TLP-1KG'
-    },
-    {
-      id: 'prod-003',
-      title: 'Handwoven Basket (Medium)',
-      price: 350,
-      quantity: 1,
-      thumbnail: '/images/unknown.jpg',
-      seller_name: 'Sagnay Crafts',
-      sku: 'CRAFT-BSK-M'
-    }
-  ])
+  // Cart items from database
+  const [cartItems, setCartItems] = useState([])
 
-  // Simplified loadCart function for static demo
-  const loadCart = () => {
-    // We're using static data, so we just need to simulate loading
-    setLoading(true)
+  // Check authentication before loading cart
+  useEffect(() => {
+    const checkAuth = () => {
+      console.log('🔒 Cart - Checking authentication...')
+      
+      // Check multiple auth sources
+      const cookieAuthData = cookieAuth.getAuth()
+      const tokenCookie = document.cookie.split(';').find(c => c.trim().startsWith('token='))
+      const token = tokenCookie ? tokenCookie.split('=')[1] : null
+      const localStorageToken = localStorage.getItem('token') || localStorage.getItem('customerToken') || localStorage.getItem('userToken')
+      const localStorageLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
+      const localStorageUser = localStorage.getItem('user')
+      
+      // Parse user from localStorage
+      let user = null
+      try {
+        user = localStorageUser ? JSON.parse(localStorageUser) : null
+      } catch (e) {
+        console.error('Error parsing user from localStorage:', e)
+      }
+      
+      // Check if user is authenticated (not seller, not admin - must be customer/regular user)
+      const isSellerAuth = cookieAuth.isSellerAuthenticated()
+      const isAdminAuth = cookieAuth.isAdminAuthenticated()
+      const hasToken = !!(token || localStorageToken)
+      const isLoggedIn = cookieAuthData.isLoggedIn || localStorageLoggedIn
+      const userRole = cookieAuthData.user?.role || user?.role
+      
+      // User is authenticated if:
+      // 1. Has token AND is logged in AND is NOT a seller/admin
+      // 2. OR cookieAuth shows customer authentication
+      const isCustomerAuth = (hasToken && isLoggedIn && userRole !== 'seller' && userRole !== 'admin') ||
+                            cookieAuth.isCustomerAuthenticated() ||
+                            (hasToken && isLoggedIn && (!userRole || userRole === 'customer' || userRole === 'user'))
+      
+      console.log('🔒 Cart - Auth check results:', {
+        cookieAuth: cookieAuth.isCustomerAuthenticated(),
+        isSellerAuth,
+        isAdminAuth,
+        hasToken,
+        isLoggedIn,
+        userRole,
+        isCustomerAuth
+      })
+      
+      if (!isCustomerAuth) {
+        console.log('❌ Cart - User not authenticated, redirecting to login...')
+        // Store current URL to redirect back after login
+        const currentPath = window.location.hash.replace('#', '') || '/user/cart'
+        localStorage.setItem('redirectAfterLogin', currentPath)
+        navigate('/login', { replace: true })
+        return
+      }
+      
+      console.log('✅ Cart - User authenticated')
+      setIsCheckingAuth(false)
+    }
     
-    // Simulate a brief loading time
-    setTimeout(() => {
+    // Small delay to ensure cookies are available
+    const timer = setTimeout(checkAuth, 100)
+    return () => clearTimeout(timer)
+  }, [navigate])
+
+  // Load cart from database or localStorage
+  const loadCart = async () => {
+    try {
+    setLoading(true)
+      setError(false)
+      
+      // Check if user is logged in - prioritize token check over app state
+      // Token is more reliable on page reload as app state might not be initialized yet
+      const tokenCookie = document.cookie.split(';').find(c => c.trim().startsWith('token='))
+      const token = tokenCookie ? tokenCookie.split('=')[1] : null
+      
+      // Also check localStorage for token as fallback
+      const localStorageToken = localStorage.getItem('token') || localStorage.getItem('customerToken') || localStorage.getItem('userToken')
+      
+      // Use token if available (more reliable than isLoggedIn state on page reload)
+      const hasAuth = token || localStorageToken
+      
+      console.log('📦 Cart - Auth check - Token from cookie:', !!token)
+      console.log('📦 Cart - Auth check - Token from localStorage:', !!localStorageToken)
+      console.log('📦 Cart - Auth check - isLoggedIn state:', isLoggedIn)
+      console.log('📦 Cart - Auth check - hasAuth:', hasAuth)
+      
+      if (hasAuth) {
+        // Load from database
+        console.log('📦 Cart - Loading cart from database...')
+        try {
+          const response = await userCartAPI.getCart()
+          console.log('✅ Cart - Database cart response:', response)
+          
+          // Handle response structure: response.data contains the cart data
+          const cartData = response || {}
+          const items = cartData.items || []
+          
+          console.log('📦 Cart - Cart items array:', items)
+          console.log('📦 Cart - Items count:', items.length)
+          
+          if (items && Array.isArray(items) && items.length > 0) {
+            // Map database items to cart format
+            const mappedItems = items.map(item => {
+              console.log('📦 Cart - Mapping item:', item)
+              
+              // Build image URL if it's a relative path
+              let imageUrl = item.product_image || item.thumbnail || item.image || null
+              if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
+                imageUrl = `http://localhost:8080/S2EH/s2e-backend${imageUrl}`
+              }
+              
+              const mappedItem = {
+                id: item.product_id,
+                title: item.product_name || item.product_title || item.title || 'Product',
+                price: parseFloat(item.current_price || item.price || item.product_price || 0),
+                quantity: parseInt(item.quantity || 1),
+                thumbnail: imageUrl || '/images/unknown.jpg',
+                image: imageUrl,
+                images: imageUrl ? [imageUrl] : [],
+                seller_name: item.seller_name || 'Unknown Seller',
+                sku: item.product_sku || item.sku || null,
+                cart_item_id: item.id // Store cart item ID for database operations
+              }
+              
+              console.log('📦 Cart - Mapped item:', mappedItem)
+              return mappedItem
+            })
+            
+            console.log('📦 Cart - Mapped cart items:', mappedItems)
+            console.log('📦 Cart - Setting cart items, count:', mappedItems.length)
+            
+            setCartItems(mappedItems)
+            
+            // Sync to localStorage for backward compatibility
+            localStorage.setItem('cart', JSON.stringify(mappedItems))
+            
+            setLoading(false)
+            setIsInitialLoad(false)
+            return
+          } else {
+            console.log('📦 Cart - No items in database cart or empty array')
+            console.log('📦 Cart - Items value:', items)
+            setCartItems([])
+            localStorage.setItem('cart', JSON.stringify([]))
+            setLoading(false)
+            setIsInitialLoad(false)
+            return
+          }
+        } catch (dbError) {
+          console.error('❌ Cart - Error loading from database, falling back to localStorage:', dbError)
+          console.error('❌ Cart - Error details:', dbError.message)
+          // Fall through to localStorage loading
+        }
+      } else {
+        console.log('📦 Cart - User not logged in or no token, loading from localStorage')
+      }
+      
+      // Fallback to localStorage
+      console.log('📦 Cart - Loading cart from localStorage...')
+      const cartData = localStorage.getItem('cart')
+      if (cartData) {
+        const parsedCart = JSON.parse(cartData)
+        console.log('📦 Cart - Loaded cart from localStorage:', parsedCart)
+        setCartItems(parsedCart)
+      } else {
+        console.log('📦 Cart - No cart found in localStorage')
+        setCartItems([])
+      }
+      
       setLoading(false)
       setIsInitialLoad(false)
-      // Static data is already set in the state
-    }, 500)
+    } catch (err) {
+      console.error('❌ Cart - Error loading cart:', err)
+      setError(true)
+      setLoading(false)
+      setIsInitialLoad(false)
+    }
   }
 
-  // Load cart on mount
+  // Load cart on mount (only after auth check passes)
   useEffect(() => {
+    if (!isCheckingAuth) {
     loadCart()
-  }, [])
+    }
+  }, [isCheckingAuth])
   
   // Initialize selected items when cart items change
   useEffect(() => {
@@ -86,8 +228,8 @@ export default function UserCartPage() {
   // Listen for cart updates from other components
   useEffect(() => {
     const handleCartUpdate = () => {
-      console.log('🔄 Cart updated from another component')
-      // For static demo, we don't need to reload
+      console.log('🔄 Cart updated from another component, reloading cart...')
+      loadCart()
     }
     
     window.addEventListener('cartUpdated', handleCartUpdate)
@@ -105,35 +247,101 @@ export default function UserCartPage() {
   // Get number of selected items
   const selectedCount = Object.values(selectedItems).filter(Boolean).length
   
-  // Calculate totals for all items
-  const allItemsSubtotal = cartItems.reduce((total, item) => {
-    const price = parseFloat(item.price) || 0
-    return total + (price * item.quantity)
-  }, 0)
+  // Get selected cart items
+  const selectedCartItems = cartItems.filter(item => selectedItems[item.id])
   
   // Calculate totals for selected items only
   const selectedItemsSubtotal = cartItems.reduce((total, item) => {
     if (selectedItems[item.id]) {
-      const price = parseFloat(item.price) || 0
-      return total + (price * item.quantity)
+    const price = parseFloat(item.price) || 0
+    return total + (price * item.quantity)
     }
     return total
   }, 0)
   
-  // Use selected items total if any are selected, otherwise use all items total
-  const subtotal = selectedCount > 0 ? selectedItemsSubtotal : allItemsSubtotal
+  // Always use selected items total (will be 0 if nothing is selected)
+  const subtotal = selectedItemsSubtotal
   
   // No discount applied
   const total = subtotal
 
-  // Simplified quantity handlers for static demo
-  const updateQuantity = (id, newQuantity) => {
+  // Handle checkout - navigate to checkout page with selected items
+  const handleCheckout = (e) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    
+    if (selectedCount === 0) {
+      console.warn('⚠️ No items selected, cannot proceed to checkout')
+      return // Button should be disabled anyway
+    }
+    
+    console.log('🛒 Checkout button clicked')
+    console.log('🛒 Selected items count:', selectedCount)
+    console.log('🛒 Selected cart items:', selectedCartItems)
+    
+    // Store selected item IDs in localStorage for checkout page to use
+    const selectedItemIds = selectedCartItems.map(item => item.id)
+    
+    console.log('🛒 Selected item IDs:', selectedItemIds)
+    
+    localStorage.setItem('checkoutSelectedItems', JSON.stringify(selectedItemIds))
+    
+    // Also store the full selected items if needed
+    localStorage.setItem('checkoutSelectedCartItems', JSON.stringify(selectedCartItems))
+    
+    console.log('🛒 Saved to localStorage:', {
+      checkoutSelectedItems: selectedItemIds,
+      checkoutSelectedCartItems: selectedCartItems
+    })
+    
+    console.log('🛒 Navigating to /user/checkout...')
+    
+    try {
+      navigate('/user/checkout')
+      console.log('✅ Navigation called successfully')
+    } catch (error) {
+      console.error('❌ Navigation error:', error)
+      // Fallback: try using window.location
+      window.location.hash = '#/user/checkout'
+    }
+  }
+
+  // Update quantity - syncs with database if logged in
+  const updateQuantity = async (id, newQuantity) => {
     if (newQuantity < 1) return
     
-    // Update local state immediately for UI feedback
-    setCartItems(items =>
-      items.map(item => (item.id === id ? { ...item, quantity: newQuantity } : item))
-    )
+    // Find the item to get cart_item_id
+    const item = cartItems.find(i => i.id === id)
+    if (!item) return
+    
+    // Update local state immediately for UI feedback and sync to localStorage
+    setCartItems(prevItems => {
+      const updatedItems = prevItems.map(i => (i.id === id ? { ...i, quantity: newQuantity } : i))
+      localStorage.setItem('cart', JSON.stringify(updatedItems))
+      return updatedItems
+    })
+    
+    // Check if user is logged in
+    const tokenCookie = document.cookie.split(';').find(c => c.trim().startsWith('token='))
+    const token = tokenCookie ? tokenCookie.split('=')[1] : null
+    const localStorageToken = localStorage.getItem('token') || localStorage.getItem('customerToken') || localStorage.getItem('userToken')
+    const hasAuth = token || localStorageToken
+    
+    // If logged in and has cart_item_id, update in database
+    if (hasAuth && item.cart_item_id) {
+      try {
+        console.log('📦 Cart - Updating quantity in database:', { cart_item_id: item.cart_item_id, quantity: newQuantity })
+        await userCartAPI.updateCartItem(item.cart_item_id, newQuantity)
+        console.log('✅ Cart - Quantity updated in database')
+      } catch (error) {
+        console.error('❌ Cart - Failed to update quantity in database:', error)
+        // Reload cart to sync
+        loadCart()
+        return
+      }
+    }
     
     // Dispatch event to update cart badge
     window.dispatchEvent(new Event('cartUpdated'))
@@ -144,10 +352,36 @@ export default function UserCartPage() {
     setShowRemoveModal(true)
   }
 
-  const confirmRemoveItem = () => {
+  const confirmRemoveItem = async () => {
     if (itemToRemove) {
-      // Remove from local state immediately
-      setCartItems(items => items.filter(i => i.id !== itemToRemove.id))
+      // Check if user is logged in
+      const tokenCookie = document.cookie.split(';').find(c => c.trim().startsWith('token='))
+      const token = tokenCookie ? tokenCookie.split('=')[1] : null
+      const localStorageToken = localStorage.getItem('token') || localStorage.getItem('customerToken') || localStorage.getItem('userToken')
+      const hasAuth = token || localStorageToken
+      
+      // If logged in and has cart_item_id, remove from database
+      if (hasAuth && itemToRemove.cart_item_id) {
+        try {
+          console.log('📦 Cart - Removing item from database:', itemToRemove.cart_item_id)
+          await userCartAPI.removeFromCart(itemToRemove.cart_item_id)
+          console.log('✅ Cart - Item removed from database')
+        } catch (error) {
+          console.error('❌ Cart - Failed to remove item from database:', error)
+          // Reload cart to sync
+          loadCart()
+          setItemToRemove(null)
+          setShowRemoveModal(false)
+          return
+        }
+      }
+      
+      // Remove from local state and sync to localStorage
+      setCartItems(prevItems => {
+        const updatedItems = prevItems.filter(i => i.id !== itemToRemove.id)
+        localStorage.setItem('cart', JSON.stringify(updatedItems))
+        return updatedItems
+      })
       
       // Dispatch event to update cart badge
       window.dispatchEvent(new Event('cartUpdated'))
@@ -160,9 +394,33 @@ export default function UserCartPage() {
     setShowClearModal(true)
   }
 
-  const confirmClearCart = () => {
+  const confirmClearCart = async () => {
+    // Check if user is logged in
+    const tokenCookie = document.cookie.split(';').find(c => c.trim().startsWith('token='))
+    const token = tokenCookie ? tokenCookie.split('=')[1] : null
+    const localStorageToken = localStorage.getItem('token') || localStorage.getItem('customerToken') || localStorage.getItem('userToken')
+    const hasAuth = token || localStorageToken
+    
     // Clear local state immediately
     setCartItems([])
+    
+    // If logged in, clear from database
+    if (hasAuth) {
+      try {
+        console.log('📦 Cart - Clearing cart from database...')
+        await userCartAPI.clearCart()
+        console.log('✅ Cart - Cart cleared from database')
+      } catch (error) {
+        console.error('❌ Cart - Failed to clear cart from database:', error)
+        // Reload cart to sync
+        loadCart()
+        setShowClearModal(false)
+        return
+      }
+    }
+    
+    // Clear localStorage
+    localStorage.setItem('cart', JSON.stringify([]))
     
     // Dispatch event to update cart badge
     window.dispatchEvent(new Event('cartUpdated'))
@@ -187,6 +445,20 @@ export default function UserCartPage() {
       updatedSelectedItems[item.id] = newSelectAll
     })
     setSelectedItems(updatedSelectedItems)
+  }
+
+  // Show loading while checking authentication
+  if (isCheckingAuth) {
+    return (
+      <div className="d-flex justify-content-center align-items-center" style={{ height: '100vh' }}>
+        <div className="text-center">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Checking authentication...</span>
+          </div>
+          <p className="mt-3 text-muted">Verifying your account...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -259,7 +531,7 @@ export default function UserCartPage() {
                       )}
                     </div>
 
-                    <div className="d-flex justify-content-end">
+                                        <div className="d-flex justify-content-end">
                       <button
                         className="btn btn-sm text-danger d-flex align-items-center border-0 p-0"
                         onClick={handleClearClick}
@@ -270,20 +542,9 @@ export default function UserCartPage() {
                   </div>
                   <div className="card-body p-0">
                     {cartItems.map((item, index) => {
-                      // Customize data to match the screenshot
-                      let sku = '';
-                      let priceLabel = '';
-                      
-                      if (index === 0) {
-                        sku = 'PILI-250G';
-                        priceLabel = '₱180.00';
-                      } else if (index === 1) {
-                        sku = 'FISH-TLP-1KG';
-                        priceLabel = '₱150.00';
-                      } else {
-                        sku = 'CRAFT-BSK-M';
-                        priceLabel = '₱350.00';
-                      }
+                      // Use dynamic data from item
+                      const sku = item.sku || 'N/A';
+                      const priceLabel = `₱${parseFloat(item.price || 0).toFixed(2)}`;
                       
                       return (
                         <div 
@@ -391,8 +652,8 @@ export default function UserCartPage() {
                         <small><i className="bi bi-info-circle me-1"></i> Showing total for {selectedCount} selected items</small>
                       </div>
                     ) : (
-                      <div className="alert alert-secondary mb-3 py-2" role="alert">
-                        <small><i className="bi bi-info-circle me-1"></i> Showing total for all items</small>
+                      <div className="alert alert-warning mb-3 py-2" role="alert">
+                        <small><i className="bi bi-exclamation-circle me-1"></i> No items selected. Select items to see total.</small>
                       </div>
                     )}
                     
@@ -413,52 +674,38 @@ export default function UserCartPage() {
                       <div className="mb-3">
                         <button 
                           className="btn btn-success w-100"
-                          onClick={() => alert(`Checkout with ${selectedCount} selected items for ₱${selectedItemsSubtotal.toFixed(2)}`)}
-                          style={{ 
-                            backgroundColor: '#2E7D32',
-                            borderColor: '#2E7D32',
-                            transition: 'all 0.2s ease'
-                          }}
-                          onMouseOver={(e) => {
-                            e.currentTarget.style.backgroundColor = '#1B5E20';
-                            e.currentTarget.style.borderColor = '#1B5E20';
-                          }}
-                          onMouseOut={(e) => {
-                            e.currentTarget.style.backgroundColor = '#2E7D32';
-                            e.currentTarget.style.borderColor = '#2E7D32';
-                          }}
+                          onClick={handleCheckout}
+                      style={{ 
+                        backgroundColor: '#2E7D32',
+                        borderColor: '#2E7D32',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.backgroundColor = '#1B5E20';
+                        e.currentTarget.style.borderColor = '#1B5E20';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.backgroundColor = '#2E7D32';
+                        e.currentTarget.style.borderColor = '#2E7D32';
+                      }}
                         >
                           Checkout Selected Items ({selectedCount})
                         </button>
                       </div>
                     ) : (
-                      <Link 
-                        to="/user/checkout"
-                        className="btn btn-success w-100 mb-3"
-                        style={{ 
-                          backgroundColor: '#2E7D32',
-                          borderColor: '#2E7D32',
-                          transition: 'all 0.2s ease'
-                        }}
-                        onMouseOver={(e) => {
-                          e.currentTarget.style.backgroundColor = '#1B5E20';
-                          e.currentTarget.style.borderColor = '#1B5E20';
-                        }}
-                        onMouseOut={(e) => {
-                          e.currentTarget.style.backgroundColor = '#2E7D32';
-                          e.currentTarget.style.borderColor = '#2E7D32';
-                        }}
-                        onMouseDown={(e) => {
-                          e.currentTarget.style.backgroundColor = '#0A3D12';
-                          e.currentTarget.style.borderColor = '#0A3D12';
-                        }}
-                        onMouseUp={(e) => {
-                          e.currentTarget.style.backgroundColor = '#1B5E20';
-                          e.currentTarget.style.borderColor = '#1B5E20';
-                        }}
-                    >
-                      Proceed to Checkout
-                    </Link>
+                      <div className="mb-3">
+                        <button 
+                          className="btn btn-secondary w-100"
+                          disabled
+                          style={{ 
+                            backgroundColor: '#6c757d',
+                            borderColor: '#6c757d',
+                            cursor: 'not-allowed'
+                          }}
+                        >
+                          Select Items to Checkout
+                        </button>
+                      </div>
                     )}
                     
                     <div className="text-center">

@@ -222,10 +222,50 @@ if ($userType === 'user') {
         
         $sellerId = $db->lastInsertId();
         
-        // Insert business address if provided
+        // Insert business address if provided (with PSGC codes)
         if (isset($data->province) && isset($data->municipality) && isset($data->barangay)) {
-            $addressQuery = "INSERT INTO addresses (seller_id, address_type, first_name, last_name, phone, address_line_1, barangay, city, province, is_default)
-                            VALUES (:seller_id, 'business', :first_name, :last_name, :phone, :address_line_1, :barangay, :city, :province, 1)";
+            // Extract PSGC codes from the data
+            $provinceCode = $data->province_code ?? null;
+            $municipalityCode = $data->municipality_code ?? null;
+            $barangayCode = $data->barangay_code ?? null;
+            
+            // Get names (these should be provided by frontend)
+            $provinceName = $data->province ?? null;
+            $municipalityName = $data->municipality ?? null;
+            $barangayName = $data->barangay ?? null;
+            
+            $addressQuery = "INSERT INTO addresses (
+                                seller_id, 
+                                address_type, 
+                                first_name, 
+                                last_name, 
+                                phone, 
+                                address_line_1, 
+                                barangay, 
+                                barangay_code,
+                                municipality, 
+                                municipality_code,
+                                city,
+                                province, 
+                                province_code,
+                                is_default
+                            )
+                            VALUES (
+                                :seller_id, 
+                                'business', 
+                                :first_name, 
+                                :last_name, 
+                                :phone, 
+                                :address_line_1, 
+                                :barangay, 
+                                :barangay_code,
+                                :municipality, 
+                                :municipality_code,
+                                :city,
+                                :province, 
+                                :province_code,
+                                1
+                            )";
             
             $addressStmt = $db->prepare($addressQuery);
             $addressStmt->bindParam(':seller_id', $sellerId);
@@ -233,11 +273,23 @@ if ($userType === 'user') {
             $addressStmt->bindParam(':last_name', $ownerName);
             $addressStmt->bindParam(':phone', $phone);
             $addressStmt->bindValue(':address_line_1', 'Business Address');
-            $addressStmt->bindParam(':barangay', $data->barangay);
-            $addressStmt->bindParam(':city', $data->municipality);
-            $addressStmt->bindParam(':province', $data->province);
+            $addressStmt->bindParam(':barangay', $barangayName);
+            $addressStmt->bindParam(':barangay_code', $barangayCode);
+            $addressStmt->bindParam(':municipality', $municipalityName);
+            $addressStmt->bindParam(':municipality_code', $municipalityCode);
+            $addressStmt->bindParam(':city', $municipalityName); // City is same as municipality name
+            $addressStmt->bindParam(':province', $provinceName);
+            $addressStmt->bindParam(':province_code', $provinceCode);
             
-            $addressStmt->execute();
+            if (!$addressStmt->execute()) {
+                error_log('❌ Failed to insert seller business address');
+                throw new Exception('Failed to save business address');
+            }
+            
+            error_log('✅ Saved seller business address with PSGC codes for seller_id: ' . $sellerId);
+            error_log('📍 Province: ' . $provinceName . ' (Code: ' . $provinceCode . ')');
+            error_log('📍 Municipality: ' . $municipalityName . ' (Code: ' . $municipalityCode . ')');
+            error_log('📍 Barangay: ' . $barangayName . ' (Code: ' . $barangayCode . ')');
         }
         
         // Commit transaction

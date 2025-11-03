@@ -13,9 +13,11 @@ function reducer(state, action) {
     case 'auth/login':
       return { ...state, isLoggedIn: true, user: action.user }
     case 'auth/logout':
-      return { ...state, isLoggedIn: false, user: null, cart: [] }
+      return { ...state, isLoggedIn: false, user: null, cart: [], searchTerm: '' }
     case 'auth/check':
       return { ...state, isLoggedIn: action.isLoggedIn, user: action.user }
+    case 'SET_SEARCH_TERM':
+      return { ...state, searchTerm: action.payload || '' }
     default:
       return state
   }
@@ -31,7 +33,8 @@ export function AppProvider({ children }) {
       email: 'guest@example.com', 
       status: 'Guest',
       role: 'guest'
-    } 
+    },
+    searchTerm: ''
   })
 
   // Check authentication status on app load

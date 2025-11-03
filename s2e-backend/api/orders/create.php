@@ -76,14 +76,16 @@ try {
     
     $paymentMethod = $data->payment_method ?? 'cod';
     $notes = $data->notes ?? null;
+    $shippingAddressId = $data->shipping_address_id ?? null;
+    $billingAddressId = $data->billing_address_id ?? $shippingAddressId; // Default to shipping address if not provided
     
     // Insert order
     $orderQuery = "INSERT INTO orders 
                    (order_number, user_id, seller_id, status, payment_status, payment_method,
-                    subtotal, shipping_fee, tax, discount, total, notes)
+                    subtotal, shipping_fee, tax, discount, total, notes, shipping_address_id, billing_address_id)
                    VALUES
                    (:order_number, :user_id, :seller_id, 'pending', 'pending', :payment_method,
-                    :subtotal, :shipping_fee, :tax, :discount, :total, :notes)";
+                    :subtotal, :shipping_fee, :tax, :discount, :total, :notes, :shipping_address_id, :billing_address_id)";
     
     $orderStmt = $db->prepare($orderQuery);
     $orderStmt->bindParam(':order_number', $orderNumber);
@@ -96,6 +98,8 @@ try {
     $orderStmt->bindParam(':discount', $discount);
     $orderStmt->bindParam(':total', $total);
     $orderStmt->bindParam(':notes', $notes);
+    $orderStmt->bindParam(':shipping_address_id', $shippingAddressId);
+    $orderStmt->bindParam(':billing_address_id', $billingAddressId);
     
     $orderStmt->execute();
     $orderId = $db->lastInsertId();

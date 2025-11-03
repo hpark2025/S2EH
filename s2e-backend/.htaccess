@@ -1,10 +1,20 @@
 # Enable Rewrite Engine
 RewriteEngine On
 
+# Disable DirectorySlash to prevent trailing slash redirects
+DirectorySlash Off
+
+# Handle OPTIONS preflight requests FIRST - must return 200 without redirect
+# Route OPTIONS to PHP handler which sets CORS headers and exits
+RewriteCond %{REQUEST_METHOD} ^OPTIONS
+RewriteRule ^api/messages.* api/messages/options.php [L,QSA]
+RewriteCond %{REQUEST_METHOD} ^OPTIONS
+RewriteRule ^api/.* - [L]
+
 # Allow CORS
 Header set Access-Control-Allow-Origin "*"
-Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, X-Seller-ID, x-publishable-api-key"
 
 # Pass Authorization header to PHP (fix for Apache CGI/FastCGI mode)
 RewriteCond %{HTTP:Authorization} .+
@@ -37,6 +47,10 @@ RewriteRule ^api/geocoding/coordinates/?$ api/geocoding/coordinates.php [L,QSA]
 # Orders routes
 RewriteRule ^api/orders$ api/orders/index.php [L]
 RewriteRule ^api/orders/create$ api/orders/create.php [L]
+RewriteCond %{REQUEST_METHOD} PUT
+RewriteRule ^api/seller/orders/([0-9]+)/?$ api/orders/update.php?id=$1 [L,QSA]
+RewriteCond %{REQUEST_METHOD} PUT
+RewriteRule ^seller/orders/([0-9]+)/?$ api/orders/update.php?id=$1 [L,QSA]
 
 # Cart routes
 RewriteCond %{REQUEST_METHOD} PUT [OR]
@@ -45,6 +59,14 @@ RewriteRule ^api/cart/items/([0-9]+)/?$ api/cart/items/update.php?id=$1 [L,QSA]
 RewriteCond %{REQUEST_METHOD} DELETE
 RewriteRule ^api/cart/items/([0-9]+)/?$ api/cart/items/delete.php?id=$1 [L,QSA]
 RewriteRule ^api/cart/?$ api/cart/index.php [L,QSA]
+
+# Messages routes - OPTIONS is handled globally at top, so this handles GET/POST
+RewriteRule ^api/messages$ api/messages/index.php [L,QSA]
+RewriteRule ^api/messages/?$ api/messages/index.php [L,QSA]
+
+# Reviews routes
+RewriteRule ^api/reviews/create/?$ api/reviews/create.php [L,QSA]
+RewriteRule ^api/reviews/?$ api/reviews/index.php [L,QSA]
 
 # Addresses routes
 RewriteCond %{REQUEST_METHOD} PUT [OR]

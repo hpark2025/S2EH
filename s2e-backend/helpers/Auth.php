@@ -86,24 +86,69 @@ class Auth {
      * Get current user from bearer token
      */
     public function getCurrentUser() {
-        $headers = apache_request_headers();
-        $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? null;
+        // Try multiple methods to get headers (works in different PHP configurations)
+        $headers = [];
         
-        // Fallback to environment variable (set by .htaccess for CGI/FastCGI mode)
+        // Method 1: getallheaders() - works in most configurations
+        if (function_exists('getallheaders')) {
+            $headers = getallheaders();
+        }
+        // Method 2: apache_request_headers() - Apache module only
+        elseif (function_exists('apache_request_headers')) {
+            $headers = apache_request_headers();
+        }
+        
+        // Normalize header keys to lowercase for case-insensitive lookup
+        $headersLower = array_change_key_case($headers ?: [], CASE_LOWER);
+        $authHeader = $headersLower['authorization'] ?? null;
+        
+        // Method 3: Check $_SERVER (set by .htaccess for CGI/FastCGI mode)
         if (!$authHeader && isset($_SERVER['HTTP_AUTHORIZATION'])) {
             $authHeader = $_SERVER['HTTP_AUTHORIZATION'];
         }
         
+        // Method 4: Check REDIRECT_HTTP_AUTHORIZATION (some Apache configs)
+        if (!$authHeader && isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+            $authHeader = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
+        }
+        
         if (!$authHeader) {
+            error_log('⚠️ Auth::getCurrentUser - No Authorization header found');
             return null;
         }
         
-        // Extract token from "Bearer TOKEN"
-        $token = str_replace('Bearer ', '', $authHeader);
+        // Extract token from "Bearer TOKEN" (case-insensitive)
+        $token = preg_replace('/^Bearer\s+/i', '', trim($authHeader));
+        
+        if (empty($token)) {
+            error_log('⚠️ Auth::getCurrentUser - Token is empty after extraction');
+            return null;
+        }
+        
+        error_log('🔍 Auth::getCurrentUser - Token extracted: ' . substr($token, 0, 20) . '...');
         
         $session = $this->verifyToken($token);
         
         if (!$session) {
+            error_log('⚠️ Auth::getCurrentUser - Session not found or expired for token');
+            error_log('⚠️ Auth::getCurrentUser - Token length: ' . strlen($token));
+            error_log('⚠️ Auth::getCurrentUser - Checking if token exists in sessions table...');
+            
+            // Debug: Check if token exists at all
+            $debugQuery = "SELECT * FROM sessions WHERE token = :token LIMIT 1";
+            $debugStmt = $this->conn->prepare($debugQuery);
+            $debugStmt->bindParam(':token', $token);
+            $debugStmt->execute();
+            $debugSession = $debugStmt->fetch();
+            
+            if ($debugSession) {
+                error_log('⚠️ Auth::getCurrentUser - Token found in DB but expired or invalid');
+                error_log('⚠️ Auth::getCurrentUser - Session expires_at: ' . ($debugSession['expires_at'] ?? 'N/A'));
+                error_log('⚠️ Auth::getCurrentUser - Current time: ' . date('Y-m-d H:i:s'));
+            } else {
+                error_log('⚠️ Auth::getCurrentUser - Token NOT found in sessions table at all');
+            }
+            
             return null;
         }
         
@@ -122,6 +167,9 @@ class Auth {
         if ($user) {
             $user['user_type'] = $userType;
             unset($user['password']); // Remove password from response
+            error_log('✅ Auth::getCurrentUser - User found: ID ' . $user['id'] . ', Type: ' . $userType);
+        } else {
+            error_log('⚠️ Auth::getCurrentUser - User not found in table ' . $table . ' with ID ' . $userId);
         }
         
         return $user;
